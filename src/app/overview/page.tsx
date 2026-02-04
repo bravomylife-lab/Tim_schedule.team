@@ -1,5 +1,5 @@
 import OverviewBoard from "@/components/overview/OverviewBoard";
 
-export default function Home() {
+export default function OverviewPage() {
   return <OverviewBoard />;
 }

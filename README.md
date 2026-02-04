@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tim · A&R Scheduler
 
-## Getting Started
+음악 A&R 업무를 위한 전담 스케줄러 에이전트 **Tim**의 UI/UX 프로토타입입니다.
 
-First, run the development server:
+## 핵심 기능
+
+- Google Calendar 동기화 버튼 (좌측 하단)
+- Overview: 오늘/내일 긴급 업무 + 7일 내 주간 업무 TODO 리스트
+- 협업: 의뢰중 / 진행중 / 완료 칸반 보드
+- Hold / Fix: 데모 홀드 및 픽스 상세 정보
+- 개인: 개인 루틴/금전/운동/독서 일정
+- 주식: 주요 일정 캘린더 + 요약 카드 + 뉴스 영역
+
+## 실행 방법
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 참고
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 현재는 샘플 데이터로 구성된 UI 프로토타입입니다.
+- Google Calendar 및 Gemini 연동은 추후 API 연결 예정입니다.
