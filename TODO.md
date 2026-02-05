@@ -1,5 +1,12 @@
 # TODO (2026-02-06)
 
+## Next - Classification 정교화
+
+- 주식/음악 충돌 케이스 샘플 수집 및 규칙 확정 (오분류 목록 기준)
+- 종목 티커/회사명 추출 규칙 정리 (한글/영문/약어 케이스)
+- PERSONAL 서브카테고리 기준 확정 (YOUTUBE/AUTOMATION/GENERAL)
+- 키워드 외 보조 신호 정의 (장소/주최자/캘린더명)
+
 - Define classification rules for Google Calendar events (keyword + calendar-based mapping).
 - Add category mapping config (keywords -> TaskCategory).
 - Tag imported events with a source field (e.g., calendarId, organizer, location).

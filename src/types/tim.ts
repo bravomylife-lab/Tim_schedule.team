@@ -45,6 +45,7 @@ export interface TimTask {
   startDate: string;
   endDate?: string;
   category: TaskCategory;
+  subCategory?: "YOUTUBE" | "AUTOMATION" | "GENERAL";
   isStarred?: boolean;
   collabDetails?: CollabDetails;
   holdFixDetails?: HoldFixDetails;

@@ -1,3 +1,5 @@
+"use client";
+
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import Card from "@mui/material/Card";
@@ -9,71 +11,74 @@ import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import SectionHeader from "@/components/SectionHeader";
 import { useTaskContext } from "@/contexts/TaskContext";
+import { TimTask } from "@/types/tim";
 
-const personalSections = [
-  {
-    title: "금전/대출",
-    items: ["대출 상환 일정", "카드/세금 결제"],
-  },
-  {
-    title: "취미",
-    items: ["레슨 예약", "영감 노트 정리"],
-  },
-  {
-    title: "독서",
-    items: ["주간 독서 기록", "추천 서평 정리"],
-  },
-  {
-    title: "운동",
-    items: ["러닝 5km", "근력 루틴"],
-  },
-];
+// Helper to categorize personal tasks if subCategory is missing
+function getPersonalSubCategory(task: TimTask & { subCategory?: string }) {
+  if (task.subCategory) return task.subCategory;
+
+  const text = `${task.title} ${task.description ?? ""}`.toLowerCase();
+  if (text.includes("브라보팝") || text.includes("youtube") || text.includes("유투브")) {
+    return "YOUTUBE";
+  }
+  if (text.includes("app") || text.includes("테스트") || text.includes("자동화") || text.includes("ai")) {
+    return "AUTOMATION";
+  }
+  return "GENERAL";
+}
 
 export default function PersonalBoard() {
   const { tasks } = useTaskContext();
   const personalTasks = tasks.filter((task) => task.category === "PERSONAL");
 
+  const sections = {
+    GENERAL: { title: "개인 일정", tasks: [] as typeof personalTasks },
+    YOUTUBE: { title: "YOUTUBE (브라보팝)", tasks: [] as typeof personalTasks },
+    AUTOMATION: { title: "AI 자동화 (APP/테스트)", tasks: [] as typeof personalTasks },
+  };
+
+  personalTasks.forEach((task) => {
+    const sub = getPersonalSubCategory(task as any);
+    if (sub === "YOUTUBE") sections.YOUTUBE.tasks.push(task);
+    else if (sub === "AUTOMATION") sections.AUTOMATION.tasks.push(task);
+    else sections.GENERAL.tasks.push(task);
+  });
+
   return (
     <Box>
-      <SectionHeader title="개인 스케줄" subtitle="개인 업무와 자기 관리 루틴을 분리 관리합니다" />
+      <SectionHeader title="개인 스케줄" subtitle="개인 일정, 유튜브, 자동화 업무를 분리하여 관리합니다" />
       <Alert severity="info" sx={{ mb: 3 }}>
-        주식 관련 일정은 전용 페이지에서 통합 관리됩니다.
+        주식 관련 일정(수익, 매출, 엔비디아 등)은 주식 탭으로 자동 분류됩니다.
       </Alert>
       <Grid container spacing={3}>
-        {personalSections.map((section) => (
-          <Grid item xs={12} md={6} key={section.title}>
+        {Object.entries(sections).map(([key, section]) => (
+          <Grid size={{ xs: 12, md: 4 }} key={key}>
             <Card>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ mb: 2 }}>
                   {section.title}
                 </Typography>
                 <List dense>
-                  {section.items.map((item) => (
-                    <ListItem key={item} disablePadding>
-                      <ListItemText primary={item} />
+                  {section.tasks.length === 0 ? (
+                    <Typography variant="caption" color="text.secondary">
+                      일정이 없습니다.
+                    </Typography>
+                  ) : (
+                    section.tasks.map((task) => (
+                      <ListItem key={task.id} disablePadding sx={{ mb: 1 }}>
+                        <ListItemText
+                          primary={task.title}
+                          secondary={task.description}
+                          primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
+                        />
                     </ListItem>
-                  ))}
+                    ))
+                  )}
                 </List>
               </CardContent>
             </Card>
           </Grid>
         ))}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                오늘의 개인 일정
-              </Typography>
-              <List dense>
-                {personalTasks.map((task) => (
-                  <ListItem key={task.id} disablePadding>
-                    <ListItemText primary={task.title} secondary={task.description} />
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
     </Box>
   );

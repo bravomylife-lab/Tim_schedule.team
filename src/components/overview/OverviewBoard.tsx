@@ -10,7 +10,16 @@ import SectionHeader from "@/components/SectionHeader";
 import SortableTaskCard from "@/components/SortableTaskCard";
 import TaskCard from "@/components/TaskCard";
 import { TimTask } from "@/types/tim";
-import { isToday, isTomorrow, isPast, parseISO } from "date-fns";
+import {
+  isToday,
+  isTomorrow,
+  isPast,
+  parseISO,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
+  addDays,
+} from "date-fns";
 import { useTaskContext } from "@/contexts/TaskContext";
 
 function sortStarredFirst(tasks: TimTask[]) {
@@ -18,31 +27,50 @@ function sortStarredFirst(tasks: TimTask[]) {
 }
 
 export default function OverviewBoard() {
-  const { tasks } = useTaskContext();
+  const { tasks, deleteTask } = useTaskContext();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const urgentTasks = useMemo(
-    () =>
-      sortStarredFirst(
-        tasks.filter((task) =>
-          task.startDate && task.category !== "WEEKLY"
-            ? isPast(parseISO(task.startDate)) || // 기한이 지난 업무도 포함 (Overdue)
-              isToday(parseISO(task.startDate)) ||
-              isTomorrow(parseISO(task.startDate))
-            : false
-        )
-      ),
-    [tasks]
-  );
+  const urgentTasks = useMemo(() => {
+    const musicTasks = tasks.filter(
+      (task) => task.category === "WEEKLY" || task.category === "URGENT"
+    );
 
-  const weeklyTasks = useMemo(
-    () => tasks.filter((task) => task.category === "WEEKLY"),
-    [tasks]
-  );
+    return sortStarredFirst(
+      musicTasks.filter((task) =>
+        task.startDate
+          ? isPast(parseISO(task.startDate)) ||
+            isToday(parseISO(task.startDate)) ||
+            isTomorrow(parseISO(task.startDate))
+          : false
+      )
+    );
+  }, [tasks]);
+
+  const weeklyTasks = useMemo(() => {
+    const today = new Date();
+    const weekEnd = endOfDay(addDays(today, 7));
+    const musicTasks = tasks.filter(
+      (task) => task.category === "WEEKLY" || task.category === "URGENT"
+    );
+
+    return musicTasks.filter((task) => {
+      if (!task.startDate) {
+        return false;
+      }
+
+      const date = parseISO(task.startDate);
+      const inWindow = isWithinInterval(date, {
+        start: startOfDay(today),
+        end: weekEnd,
+      });
+      const isUrgent = isPast(date) || isToday(date) || isTomorrow(date);
+      return inWindow && !isUrgent;
+    });
+  }, [tasks]);
 
   const [urgentList, setUrgentList] = useState<TimTask[]>(urgentTasks);
   const [weeklyList, setWeeklyList] = useState<TimTask[]>(weeklyTasks);
@@ -102,13 +130,23 @@ export default function OverviewBoard() {
                   strategy={verticalListSortingStrategy}
                 >
                   {urgentList.map((task) => (
-                    <SortableTaskCard key={task.id} task={task} onToggleStar={handleToggleStar} />
+                    <SortableTaskCard
+                      key={task.id}
+                      task={task}
+                      onToggleStar={handleToggleStar}
+                      onDelete={deleteTask}
+                    />
                   ))}
                 </SortableContext>
               </DndContext>
             ) : (
               urgentList.map((task) => (
-                <TaskCard key={task.id} task={task} onToggleStar={handleToggleStar} />
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onToggleStar={handleToggleStar}
+                  onDelete={deleteTask}
+                />
               ))
             )}
           </Paper>
@@ -123,12 +161,14 @@ export default function OverviewBoard() {
                   strategy={verticalListSortingStrategy}
                 >
                   {weeklyList.map((task) => (
-                    <SortableTaskCard key={task.id} task={task} />
+                    <SortableTaskCard key={task.id} task={task} onDelete={deleteTask} />
                   ))}
                 </SortableContext>
               </DndContext>
             ) : (
-              weeklyList.map((task) => <TaskCard key={task.id} task={task} />)
+              weeklyList.map((task) => (
+                <TaskCard key={task.id} task={task} onDelete={deleteTask} />
+              ))
             )}
           </Paper>
         </Grid>

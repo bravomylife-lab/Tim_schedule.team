@@ -11,9 +11,10 @@ import { TimTask } from "@/types/tim";
 interface SortableTaskCardProps {
   task: TimTask;
   onToggleStar?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function SortableTaskCard({ task, onToggleStar }: SortableTaskCardProps) {
+export default function SortableTaskCard({ task, onToggleStar, onDelete }: SortableTaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
 
@@ -29,7 +30,7 @@ export default function SortableTaskCard({ task, onToggleStar }: SortableTaskCar
         <DragIndicatorRounded />
       </IconButton>
       <Box sx={{ flex: 1 }}>
-        <TaskCard task={task} onToggleStar={onToggleStar} />
+        <TaskCard task={task} onToggleStar={onToggleStar} onDelete={onDelete} />
       </Box>
     </Box>
   );

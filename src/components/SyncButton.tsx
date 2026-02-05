@@ -10,8 +10,8 @@ import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
 import { subDays, addDays } from "date-fns";
 import { useTaskContext } from "@/contexts/TaskContext";
 
-const CLIENT_ID = "670765876376-t2u3cobc54nu20l2r5cnpkpqrfnvvbpb.apps.googleusercontent.com";
-const API_KEY = "AIzaSyD9Ok8rE5FwKmeJtrr9gVe2w3gS03J8ixk";
+const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY ?? "";
 
 const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
 
@@ -39,6 +39,11 @@ export default function SyncButton() {
   // 1. Google API 스크립트 로드
   useEffect(() => {
     const initClient = async () => {
+      if (!API_KEY) {
+        setInitError("Google API 키가 설정되지 않았습니다. 환경 변수를 확인해주세요.");
+        return;
+      }
+
       if (!window.gapi?.client) {
         setInitError("Google API 클라이언트를 찾을 수 없습니다.");
         return;
@@ -94,6 +99,11 @@ export default function SyncButton() {
       setInitError("Google OAuth 스크립트를 불러오지 못했습니다.");
     };
     gisScript.onload = () => {
+      if (!CLIENT_ID) {
+        setInitError("Google OAuth 클라이언트 ID가 설정되지 않았습니다. 환경 변수를 확인해주세요.");
+        return;
+      }
+
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
@@ -119,7 +129,7 @@ export default function SyncButton() {
             });
 
             const events = response.result.items ?? [];
-            syncRef.current(events);
+            await syncRef.current(events);
             alert(`동기화 완료! ${events.length}개의 일정을 가져왔습니다.`);
           } catch (err: any) {
             console.error("Error fetching events", err);

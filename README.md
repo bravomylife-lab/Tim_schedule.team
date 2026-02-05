@@ -18,6 +18,16 @@ npm install
 npm run dev
 ```
 
+## 환경 변수
+
+Google Calendar 연동을 테스트하려면 아래 변수를 설정하세요.
+
+```bash
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=
+NEXT_PUBLIC_GOOGLE_API_KEY=
+NEXT_PUBLIC_GEMINI_API_KEY=
+```
+
 ## 참고
 
 - 현재는 샘플 데이터로 구성된 UI 프로토타입입니다.
