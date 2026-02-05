@@ -9,15 +9,16 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-ki
 import SectionHeader from "@/components/SectionHeader";
 import SortableTaskCard from "@/components/SortableTaskCard";
 import TaskCard from "@/components/TaskCard";
-import { sampleTasks } from "@/lib/sampleData";
 import { TimTask } from "@/types/tim";
 import { isToday, isTomorrow, isPast, parseISO } from "date-fns";
+import { useTaskContext } from "@/contexts/TaskContext";
 
 function sortStarredFirst(tasks: TimTask[]) {
   return [...tasks].sort((a, b) => Number(b.isStarred) - Number(a.isStarred));
 }
 
 export default function OverviewBoard() {
+  const { tasks } = useTaskContext();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function OverviewBoard() {
   const urgentTasks = useMemo(
     () =>
       sortStarredFirst(
-        sampleTasks.filter((task) =>
+        tasks.filter((task) =>
           task.startDate && task.category !== "WEEKLY"
             ? isPast(parseISO(task.startDate)) || // 기한이 지난 업무도 포함 (Overdue)
               isToday(parseISO(task.startDate)) ||
@@ -35,16 +36,24 @@ export default function OverviewBoard() {
             : false
         )
       ),
-    []
+    [tasks]
   );
 
   const weeklyTasks = useMemo(
-    () => sampleTasks.filter((task) => task.category === "WEEKLY"),
-    []
+    () => tasks.filter((task) => task.category === "WEEKLY"),
+    [tasks]
   );
 
   const [urgentList, setUrgentList] = useState<TimTask[]>(urgentTasks);
   const [weeklyList, setWeeklyList] = useState<TimTask[]>(weeklyTasks);
+
+  useEffect(() => {
+    setUrgentList(urgentTasks);
+  }, [urgentTasks]);
+
+  useEffect(() => {
+    setWeeklyList(weeklyTasks);
+  }, [weeklyTasks]);
 
   const handleToggleStar = (id: string) => {
     setUrgentList((prev) => {

@@ -14,10 +14,10 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { sampleTasks } from "@/lib/sampleData";
 import { CollabStatus, TimTask } from "@/types/tim";
 import SectionHeader from "@/components/SectionHeader";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
+import { useTaskContext } from "@/contexts/TaskContext";
 
 const columns: { id: CollabStatus; title: string }[] = [
   { id: "REQUESTED", title: "협업 의뢰중" },
@@ -171,6 +171,7 @@ function CollabCardStatic({ task }: { task: TimTask }) {
 }
 
 export default function CollabBoard() {
+  const { tasks: allTasks } = useTaskContext();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -178,10 +179,14 @@ export default function CollabBoard() {
   }, []);
 
   const initialTasks = useMemo(
-    () => sampleTasks.filter((task) => task.category === "COLLAB"),
-    []
+    () => allTasks.filter((task) => task.category === "COLLAB"),
+    [allTasks]
   );
   const [tasks, setTasks] = useState<TimTask[]>(initialTasks);
+
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
 
   const groupedTasks = useMemo(() => {
     const map: Record<CollabStatus, TimTask[]> = {

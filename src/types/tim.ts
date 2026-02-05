@@ -49,4 +49,6 @@ export interface TimTask {
   collabDetails?: CollabDetails;
   holdFixDetails?: HoldFixDetails;
   stockDetails?: StockDetails;
+  googleEventId?: string;
+  lastSyncedAt?: string;
 }

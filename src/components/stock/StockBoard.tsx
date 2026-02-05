@@ -11,7 +11,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import SectionHeader from "@/components/SectionHeader";
-import { sampleTasks } from "@/lib/sampleData";
+import { useTaskContext } from "@/contexts/TaskContext";
 import {
   format,
   parseISO,
@@ -26,7 +26,8 @@ import {
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function StockBoard() {
-  const stockTasks = sampleTasks.filter((task) => task.category === "STOCK");
+  const { tasks } = useTaskContext();
+  const stockTasks = tasks.filter((task) => task.category === "STOCK");
 
   const calendarDays = useMemo(() => {
     const today = new Date();

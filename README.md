@@ -1,4 +1,4 @@
-# Tim · A&R Scheduler
+# Tim_Schedul Agent
 
 음악 A&R 업무를 위한 전담 스케줄러 에이전트 **Tim**의 UI/UX 프로토타입입니다.
 

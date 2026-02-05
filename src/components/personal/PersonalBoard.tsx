@@ -8,7 +8,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import SectionHeader from "@/components/SectionHeader";
-import { sampleTasks } from "@/lib/sampleData";
+import { useTaskContext } from "@/contexts/TaskContext";
 
 const personalSections = [
   {
@@ -30,7 +30,8 @@ const personalSections = [
 ];
 
 export default function PersonalBoard() {
-  const personalTasks = sampleTasks.filter((task) => task.category === "PERSONAL");
+  const { tasks } = useTaskContext();
+  const personalTasks = tasks.filter((task) => task.category === "PERSONAL");
 
   return (
     <Box>

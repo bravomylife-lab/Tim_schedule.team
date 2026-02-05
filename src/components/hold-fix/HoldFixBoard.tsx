@@ -9,10 +9,11 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import SectionHeader from "@/components/SectionHeader";
-import { sampleTasks } from "@/lib/sampleData";
+import { useTaskContext } from "@/contexts/TaskContext";
 
 export default function HoldFixBoard() {
-  const items = sampleTasks.filter((task) => task.category === "HOLD_FIX");
+  const { tasks } = useTaskContext();
+  const items = tasks.filter((task) => task.category === "HOLD_FIX");
   const holdItems = items.filter((task) => task.holdFixDetails?.type === "HOLD");
   const fixReleaseItems = items.filter(
     (task) => task.holdFixDetails?.type === "FIX" || task.holdFixDetails?.type === "RELEASE"
