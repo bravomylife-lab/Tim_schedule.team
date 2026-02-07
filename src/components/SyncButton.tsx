@@ -116,7 +116,7 @@ export default function SyncButton() {
           try {
             window.gapi.client.setToken(resp);
             const today = new Date();
-            const timeMin = subDays(today, 3).toISOString();
+            const timeMin = subDays(today, 5).toISOString();
             const timeMax = addDays(today, 14).toISOString();
 
             const response = await window.gapi.client.calendar.events.list({

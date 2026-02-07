@@ -12,6 +12,7 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import DashboardRounded from "@mui/icons-material/DashboardRounded";
 import HandshakeRounded from "@mui/icons-material/HandshakeRounded";
+import LightbulbRounded from "@mui/icons-material/LightbulbRounded";
 import LibraryMusicRounded from "@mui/icons-material/LibraryMusicRounded";
 import SelfImprovementRounded from "@mui/icons-material/SelfImprovementRounded";
 import ShowChartRounded from "@mui/icons-material/ShowChartRounded";
@@ -22,6 +23,7 @@ const drawerWidth = 280;
 const navigationItems = [
   { href: "/", label: "Overview", icon: <DashboardRounded /> },
   { href: "/collab", label: "협업", icon: <HandshakeRounded /> },
+  { href: "/pitching", label: "피칭아이디어", icon: <LightbulbRounded /> },
   { href: "/hold-fix", label: "Hold / Fix", icon: <LibraryMusicRounded /> },
   { href: "/personal", label: "개인 스케줄", icon: <SelfImprovementRounded /> },
   { href: "/stock", label: "주식 일정", icon: <ShowChartRounded /> },
@@ -46,9 +48,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Box sx={{ p: 3 }}>
-          <Typography variant="h5">Tim</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+            Tim
+          </Typography>
           <Typography variant="body2" color="text.secondary">
-            A&R 전문 스케줄러 에이전트
+            PEERMUSIC A&R 전문 비서
           </Typography>
         </Box>
         <Divider />
@@ -63,7 +67,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               }
               sx={{
                 borderRadius: 3,
-                mb: 1,
+                mb: 0.5,
                 "&.Mui-selected": {
                   backgroundColor: "rgba(53, 89, 227, 0.12)",
                   "&:hover": {

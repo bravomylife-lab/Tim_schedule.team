@@ -6,6 +6,9 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
+import Button from "@mui/material/Button";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import { DndContext, DragEndEvent, closestCorners, useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -14,9 +17,9 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CollabStatus, TimTask } from "@/types/tim";
+import { CollabStatus, TimTask, PitchingGrade } from "@/types/tim";
 import SectionHeader from "@/components/SectionHeader";
-import { format, parseISO, differenceInCalendarDays } from "date-fns";
+import { format, parseISO, differenceInCalendarDays, isValid } from "date-fns";
 import { useTaskContext } from "@/contexts/TaskContext";
 
 const columns: { id: CollabStatus; title: string }[] = [
@@ -25,15 +28,39 @@ const columns: { id: CollabStatus; title: string }[] = [
   { id: "COMPLETED", title: "협업 완료" },
 ];
 
+const gradeLabels: Record<PitchingGrade, string> = {
+  S: "S급",
+  A: "A급",
+  A_JPN: "A-급(JPN)",
+};
+
+const formatDate = (value?: string) => {
+  if (!value) return "-";
+  const parsed = parseISO(value);
+  if (!isValid(parsed)) return "-";
+  return format(parsed, "yyyy.MM.dd");
+};
+
+const parseISOIfValid = (value?: string) => {
+  if (!value) return null;
+  const parsed = parseISO(value);
+  return isValid(parsed) ? parsed : null;
+};
+
 function CollabCard({
   task,
   onToggleMix,
+  onMoveToPitching,
 }: {
   task: TimTask;
   onToggleMix: (id: string) => void;
+  onMoveToPitching: (taskId: string, grade: PitchingGrade) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -42,78 +69,151 @@ function CollabCard({
   };
 
   const details = task.collabDetails;
-  
+
   // D-Day 계산
-  const dDay = details?.deadline 
-    ? differenceInCalendarDays(parseISO(details.deadline), new Date()) 
-    : null;
+  const deadlineDate = parseISOIfValid(details?.deadline);
+  const dDay = deadlineDate ? differenceInCalendarDays(deadlineDate, new Date()) : null;
 
   // 긴급(3일 이내) 또는 지연(Overdue) 상태 확인 (완료된 건은 제외)
   const isUrgent = dDay !== null && dDay <= 3 && dDay >= 0 && details?.status !== "COMPLETED";
   const isOverdue = dDay !== null && dDay < 0 && details?.status !== "COMPLETED";
 
+  const isCompleted = details?.status === "COMPLETED";
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = (event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    setAnchorEl(null);
+  };
+
+  const handleGradeSelect = (event: React.MouseEvent, grade: PitchingGrade) => {
+    event.stopPropagation();
+    onMoveToPitching(task.id, grade);
+    handleMenuClose();
+  };
+
   return (
-    <Paper
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      sx={{ 
-        p: 2, 
-        borderRadius: 4, 
-        cursor: "grab", 
-        backgroundColor: "#fff",
-        border: isUrgent || isOverdue ? "2px solid #ef5350" : "1px solid transparent", // 긴급 시 붉은 테두리
-        transition: "border 0.2s ease"
-      }}
-    >
-      <Stack spacing={1}>
-        <Typography variant="subtitle1">{task.title}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          의뢰일: {task.startDate ? format(parseISO(task.startDate), "MM.dd") : "-"}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Producer: {details?.trackProducer}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Topliner: {details?.topLiner}
-        </Typography>
-        <Chip
-          label={`Target: ${details?.targetArtist}`}
-          size="small"
-          color="primary"
-        />
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="caption" color="text.secondary">
-            Deadline: {details?.deadline ? format(parseISO(details.deadline), "MM.dd") : "-"}
+    <>
+      <Paper
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        sx={{
+          p: 2,
+          borderRadius: 4,
+          cursor: "grab",
+          backgroundColor: "#fff",
+          border: isUrgent || isOverdue ? "2px solid #ef5350" : "1px solid transparent",
+          transition: "border 0.2s ease"
+        }}
+      >
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight="600">
+            트랙명: {details?.trackName || task.title}
           </Typography>
-          {details?.status === "COMPLETED" ? (
-            <Chip
-              label={`믹스 모니터 ${details.mixMonitorSent ? "O" : "X"}`}
-              color={details.mixMonitorSent ? "success" : "default"}
-              size="small"
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleMix(task.id);
+          {details?.songName && details.songName !== details.trackName && (
+            <Typography variant="body2" color="text.secondary">
+              곡명: {details.songName}
+            </Typography>
+          )}
+          <Typography variant="body2" color="text.secondary">
+            프로듀서: {details?.trackProducer}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            탑라이너: {details?.topLiner}
+          </Typography>
+          <Chip
+            label={`타겟 아티스트: ${details?.targetArtist}`}
+            size="small"
+            color="primary"
+          />
+          <Typography variant="body2" color="text.secondary">
+            의뢰일: {details?.requestedDate
+              ? formatDate(details.requestedDate)
+              : formatDate(task.startDate)}
+          </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" color="text.secondary">
+              데드라인: {formatDate(details?.deadline)}
+            </Typography>
+            {isCompleted ? (
+              <Chip
+                label={`믹스 모니터 ${details.mixMonitorSent ? "O" : "X"}`}
+                color={details.mixMonitorSent ? "success" : "default"}
+                size="small"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleMix(task.id);
+                }}
+                sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
+              />
+            ) : null}
+            {isUrgent && <Chip label={`D-${dDay}`} color="error" size="small" sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }} />}
+            {isOverdue && <Chip label="Overdue" color="error" size="small" sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }} />}
+          </Stack>
+          {details?.notes && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                fontStyle: 'italic',
+                mt: 1,
+                p: 1,
+                backgroundColor: '#f5f5f5',
+                borderRadius: 1,
+                whiteSpace: 'pre-wrap'
               }}
-              sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
-            />
-          ) : null}
-          {isUrgent && <Chip label={`D-${dDay}`} color="error" size="small" sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }} />}
-          {isOverdue && <Chip label="Overdue" color="error" size="small" sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }} />}
+            >
+              메모: {details.notes}
+            </Typography>
+          )}
+          {isCompleted && (
+            <Button
+              variant="outlined"
+              size="small"
+              fullWidth
+              onClick={handleMenuClick}
+              sx={{ mt: 1 }}
+            >
+              피칭아이디어로 이동
+            </Button>
+          )}
         </Stack>
-      </Stack>
-    </Paper>
+      </Paper>
+      <Menu
+        anchorEl={anchorEl}
+        open={menuOpen}
+        onClose={() => handleMenuClose()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <MenuItem onClick={(e) => handleGradeSelect(e, "S")}>
+          {gradeLabels.S}
+        </MenuItem>
+        <MenuItem onClick={(e) => handleGradeSelect(e, "A")}>
+          {gradeLabels.A}
+        </MenuItem>
+        <MenuItem onClick={(e) => handleGradeSelect(e, "A_JPN")}>
+          {gradeLabels.A_JPN}
+        </MenuItem>
+      </Menu>
+    </>
   );
 }
 
 function CollabCardStatic({ task }: { task: TimTask }) {
   const details = task.collabDetails;
-  const dDay = details?.deadline
-    ? differenceInCalendarDays(parseISO(details.deadline), new Date())
-    : null;
+  const deadlineDate = parseISOIfValid(details?.deadline);
+  const dDay = deadlineDate ? differenceInCalendarDays(deadlineDate, new Date()) : null;
   const isUrgent = dDay !== null && dDay <= 3 && dDay >= 0 && details?.status !== "COMPLETED";
   const isOverdue = dDay !== null && dDay < 0 && details?.status !== "COMPLETED";
+  const isCompleted = details?.status === "COMPLETED";
 
   return (
     <Paper
@@ -125,22 +225,31 @@ function CollabCardStatic({ task }: { task: TimTask }) {
       }}
     >
       <Stack spacing={1}>
-        <Typography variant="subtitle1">{task.title}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          의뢰일: {task.startDate ? format(parseISO(task.startDate), "MM.dd") : "-"}
+        <Typography variant="subtitle1" fontWeight="600">
+          트랙명: {details?.trackName || task.title}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Producer: {details?.trackProducer}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Topliner: {details?.topLiner}
-        </Typography>
-        <Chip label={`Target: ${details?.targetArtist}`} size="small" color="primary" />
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="caption" color="text.secondary">
-            Deadline: {details?.deadline ? format(parseISO(details.deadline), "MM.dd") : "-"}
+        {details?.songName && details.songName !== details.trackName && (
+          <Typography variant="body2" color="text.secondary">
+            곡명: {details.songName}
           </Typography>
-          {details?.status === "COMPLETED" ? (
+        )}
+        <Typography variant="body2" color="text.secondary">
+          프로듀서: {details?.trackProducer}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          탑라이너: {details?.topLiner}
+        </Typography>
+        <Chip label={`타겟 아티스트: ${details?.targetArtist}`} size="small" color="primary" />
+        <Typography variant="body2" color="text.secondary">
+          의뢰일: {details?.requestedDate
+            ? formatDate(details.requestedDate)
+            : formatDate(task.startDate)}
+        </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="body2" color="text.secondary">
+            데드라인: {formatDate(details?.deadline)}
+          </Typography>
+          {isCompleted ? (
             <Chip
               label={`믹스 모니터 ${details.mixMonitorSent ? "O" : "X"}`}
               color={details.mixMonitorSent ? "success" : "default"}
@@ -165,13 +274,40 @@ function CollabCardStatic({ task }: { task: TimTask }) {
             />
           ) : null}
         </Stack>
+        {details?.notes && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              fontStyle: 'italic',
+              mt: 1,
+              p: 1,
+              backgroundColor: '#f5f5f5',
+              borderRadius: 1,
+              whiteSpace: 'pre-wrap'
+            }}
+          >
+            메모: {details.notes}
+          </Typography>
+        )}
+        {isCompleted && (
+          <Button
+            variant="outlined"
+            size="small"
+            fullWidth
+            disabled
+            sx={{ mt: 1 }}
+          >
+            피칭아이디어로 이동
+          </Button>
+        )}
       </Stack>
     </Paper>
   );
 }
 
 export default function CollabBoard() {
-  const { tasks: allTasks } = useTaskContext();
+  const { tasks: allTasks, moveToPitching } = useTaskContext();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -212,17 +348,18 @@ export default function CollabBoard() {
     const nextStatus = overColumn?.id ?? overTask?.collabDetails?.status;
 
     setTasks((prev) => {
-      const updated = prev.map((task) =>
-        task.id === activeTask.id
-          ? {
-              ...task,
-              collabDetails: {
-                ...task.collabDetails,
-                status: nextStatus ?? "REQUESTED",
-              },
-            }
-          : task
-      );
+      const updated = prev.map((task) => {
+        if (task.id !== activeTask.id) return task;
+        const details = task.collabDetails;
+        if (!details) return task;
+        return {
+          ...task,
+          collabDetails: {
+            ...details,
+            status: (nextStatus ?? "REQUESTED") as CollabStatus,
+          },
+        };
+      });
 
       if (overTask) {
         const currentIndex = updated.findIndex((task) => task.id === active.id);
@@ -236,18 +373,23 @@ export default function CollabBoard() {
 
   const handleToggleMix = (id: string) => {
     setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              collabDetails: {
-                ...task.collabDetails,
-                mixMonitorSent: !task.collabDetails?.mixMonitorSent,
-              },
-            }
-          : task
-      )
+      prev.map((task) => {
+        if (task.id !== id) return task;
+        const details = task.collabDetails;
+        if (!details) return task;
+        return {
+          ...task,
+          collabDetails: {
+            ...details,
+            mixMonitorSent: !details.mixMonitorSent,
+          },
+        };
+      })
     );
+  };
+
+  const handleMoveToPitching = (taskId: string, grade: PitchingGrade) => {
+    moveToPitching(taskId, grade);
   };
 
   return (
@@ -266,6 +408,7 @@ export default function CollabBoard() {
                 title={column.title}
                 tasks={groupedTasks[column.id]}
                 onToggleMix={handleToggleMix}
+                onMoveToPitching={handleMoveToPitching}
               />
             ))}
           </Box>
@@ -295,11 +438,13 @@ function CollabColumn({
   title,
   tasks,
   onToggleMix,
+  onMoveToPitching,
 }: {
   columnId: CollabStatus;
   title: string;
   tasks: TimTask[];
   onToggleMix: (id: string) => void;
+  onMoveToPitching: (taskId: string, grade: PitchingGrade) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: columnId });
 
@@ -311,7 +456,12 @@ function CollabColumn({
       <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
         <Stack spacing={2}>
           {tasks.map((task) => (
-            <CollabCard key={task.id} task={task} onToggleMix={onToggleMix} />
+            <CollabCard
+              key={task.id}
+              task={task}
+              onToggleMix={onToggleMix}
+              onMoveToPitching={onMoveToPitching}
+            />
           ))}
         </Stack>
       </SortableContext>
