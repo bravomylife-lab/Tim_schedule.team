@@ -1,118 +1,168 @@
 #!/usr/bin/env node
 
-const { spawn, exec } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = 3000;
-const URL = `http://localhost:${PORT}`;
+const APP_URL = 'http://localhost:' + PORT;
+const PROJECT_DIR = __dirname;
+const LOCK_FILE = path.join(PROJECT_DIR, '.next', 'dev', 'lock');
 
 console.log('====================================');
-console.log('Tim A&R Scheduling Manager');
-console.log('====================================\n');
+console.log('  Tim A&R Scheduling Manager');
+console.log('====================================');
+console.log('');
 
-// 서버가 준비되었는지 확인
-function checkServer(callback) {
-  http.get(URL, (res) => {
-    callback(true);
-  }).on('error', () => {
-    callback(false);
-  });
-}
+let devProcess = null;
 
-// 서버 준비 대기
-function waitForServer(maxAttempts = 30) {
-  return new Promise((resolve, reject) => {
-    let attempts = 0;
-
-    const check = () => {
-      checkServer((isReady) => {
-        if (isReady) {
-          resolve();
-        } else {
-          attempts++;
-          if (attempts >= maxAttempts) {
-            reject(new Error('서버 시작 시간 초과'));
-          } else {
-            setTimeout(check, 1000);
-          }
-        }
-      });
-    };
-
-    check();
-  });
-}
-
-// 브라우저 열기
-function openBrowser() {
-  const platform = process.platform;
-  let command;
-
-  if (platform === 'win32') {
-    command = `start ${URL}`;
-  } else if (platform === 'darwin') {
-    command = `open ${URL}`;
-  } else {
-    command = `xdg-open ${URL}`;
-  }
-
-  exec(command, (error) => {
-    if (error) {
-      console.error('브라우저를 열 수 없습니다:', error);
-      console.log(`수동으로 브라우저에서 ${URL} 을 열어주세요.`);
-    } else {
-      console.log('✓ 브라우저가 열렸습니다!');
+// Kill any existing process on a given port (Windows)
+function killPortProcess(port) {
+  try {
+    const result = execSync(
+      'netstat -ano | findstr :' + port + ' | findstr LISTENING',
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    const lines = result.trim().split('\n');
+    const pids = new Set();
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      const pid = parts[parts.length - 1];
+      if (pid && pid !== '0') pids.add(pid);
     }
+    for (const pid of pids) {
+      try {
+        execSync('taskkill /F /PID ' + pid, { stdio: 'pipe' });
+        console.log('[*] Killed existing process on port ' + port + ' (PID: ' + pid + ')');
+      } catch (e) {
+        // process may have already exited
+      }
+    }
+    if (pids.size > 0) {
+      // Give OS time to release the port
+      execSync('timeout /t 2 /nobreak >NUL 2>&1', { shell: true });
+    }
+  } catch (e) {
+    // No process on that port, that's fine
+  }
+}
+
+// Remove stale lock file
+function removeLockFile() {
+  try {
+    if (fs.existsSync(LOCK_FILE)) {
+      fs.unlinkSync(LOCK_FILE);
+      console.log('[*] Removed stale lock file');
+    }
+  } catch (e) {
+    // Lock file may be held; try removing the directory
+    try {
+      const lockDir = path.dirname(LOCK_FILE);
+      fs.rmSync(lockDir, { recursive: true, force: true });
+      console.log('[*] Removed stale lock directory');
+    } catch (e2) {
+      // ignore
+    }
+  }
+}
+
+// Check if server is ready
+function checkServer() {
+  return new Promise((resolve) => {
+    http.get(APP_URL, (res) => {
+      res.resume();
+      resolve(true);
+    }).on('error', () => {
+      resolve(false);
+    });
   });
 }
 
-// 메인 실행
-async function main() {
-  console.log('🚀 서버를 시작하는 중...\n');
+// Wait for server to be ready
+async function waitForServer(maxSeconds) {
+  for (let i = 0; i < maxSeconds; i++) {
+    if (await checkServer()) return true;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return false;
+}
 
-  // npm run dev 실행
-  const devProcess = spawn('npm', ['run', 'dev'], {
+// Open default browser
+function openBrowser() {
+  try {
+    execSync('start "" "' + APP_URL + '"', { shell: true, stdio: 'pipe' });
+    console.log('[OK] Browser opened!');
+  } catch (e) {
+    console.log('[!] Could not open browser. Open manually: ' + APP_URL);
+  }
+}
+
+// Cleanup on exit
+function cleanup() {
+  if (devProcess && !devProcess.killed) {
+    try { process.kill(devProcess.pid, 'SIGTERM'); } catch (e) {}
+    // Also kill entire process tree on Windows
+    try { execSync('taskkill /F /T /PID ' + devProcess.pid, { stdio: 'pipe' }); } catch (e) {}
+  }
+}
+
+// Main
+async function main() {
+  // Step 1: Kill any existing server on port 3000
+  console.log('[1/4] Checking port ' + PORT + '...');
+  killPortProcess(PORT);
+
+  // Step 2: Remove stale lock file
+  console.log('[2/4] Cleaning up...');
+  removeLockFile();
+
+  // Step 3: Start dev server
+  console.log('[3/4] Starting Next.js dev server...');
+  console.log('');
+
+  devProcess = spawn('cmd.exe', ['/c', 'npm', 'run', 'dev'], {
     stdio: 'inherit',
-    shell: true
+    cwd: PROJECT_DIR,
+    windowsHide: false
   });
 
   devProcess.on('error', (error) => {
-    console.error('서버 시작 실패:', error);
+    console.error('Failed to start: ' + error.message);
     process.exit(1);
   });
 
-  // 서버 준비 대기
-  try {
-    console.log('⏳ 서버 준비 대기 중...');
-    await waitForServer();
-    console.log('✓ 서버가 준비되었습니다!\n');
+  devProcess.on('exit', (code) => {
+    if (code !== 0 && code !== null) {
+      console.error('Server exited with code ' + code);
+    }
+    process.exit(code || 0);
+  });
 
-    // 브라우저 열기
-    setTimeout(() => {
-      openBrowser();
-      console.log('\n====================================');
-      console.log('Tim이 실행되었습니다!');
-      console.log(`브라우저: ${URL}`);
-      console.log('====================================\n');
-      console.log('종료하려면 Ctrl+C를 누르세요.\n');
-    }, 500);
-  } catch (error) {
-    console.log('⚠ 서버 준비에 시간이 걸리고 있습니다...');
-    console.log('브라우저를 열어봅니다. 잠시 기다려주세요.\n');
+  // Step 4: Wait for server and open browser
+  console.log('[4/4] Waiting for server...');
+  const ready = await waitForServer(60);
+
+  if (ready) {
+    console.log('');
+    console.log('====================================');
+    console.log('  Tim is running!');
+    console.log('  ' + APP_URL);
+    console.log('====================================');
+    console.log('');
+    openBrowser();
+    console.log('');
+    console.log('Close this window to stop the server.');
+    console.log('');
+  } else {
+    console.log('[!] Server is taking longer than expected...');
     openBrowser();
   }
 
-  // 종료 시그널 처리
-  process.on('SIGINT', () => {
-    console.log('\n\n서버를 종료하는 중...');
-    devProcess.kill('SIGINT');
-    process.exit(0);
-  });
-
-  process.on('SIGTERM', () => {
-    devProcess.kill('SIGTERM');
-    process.exit(0);
-  });
+  // Handle exit
+  process.on('SIGINT', () => { cleanup(); process.exit(0); });
+  process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+  process.on('exit', cleanup);
 }
 
 main();
