@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(del \"c:\\\\Users\\\\droli\\\\PEERMUSIC\\\\SUPER.TEAM\\\\Tim_Schedul Agent\\\\TaskContext.tsx\")"
+      "Bash(del \"c:\\\\Users\\\\droli\\\\PEERMUSIC\\\\SUPER.TEAM\\\\Tim_Schedul Agent\\\\TaskContext.tsx\")",
+      "Bash(git commit:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File:*)",
+      "Bash(cscript:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command \"$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut\\([System.Environment]::GetFolderPath\\(''Desktop''\\) + ''\\\\Tim A&R Manager.lnk''\\); $Shortcut.TargetPath = ''C:\\\\Users\\\\droli\\\\PEERMUSIC\\\\SUPER.TEAM\\\\Tim_Schedul Agent\\\\Tim 실행.bat''; $Shortcut.WorkingDirectory = ''C:\\\\Users\\\\droli\\\\PEERMUSIC\\\\SUPER.TEAM\\\\Tim_Schedul Agent''; $Shortcut.Description = ''Tim A&R Manager''; $Shortcut.Save\\(\\); Write-Host ''바탕화면 바로가기 생성 완료!''\")",
+      "Bash(cmd /c install.bat:*)"
     ]
   }
 }
