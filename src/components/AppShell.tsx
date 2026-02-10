@@ -23,8 +23,8 @@ const drawerWidth = 280;
 const navigationItems = [
   { href: "/", label: "Overview", icon: <DashboardRounded /> },
   { href: "/collab", label: "협업", icon: <HandshakeRounded /> },
-  { href: "/pitching", label: "피칭아이디어", icon: <LightbulbRounded /> },
   { href: "/hold-fix", label: "Hold / Fix", icon: <LibraryMusicRounded /> },
+  { href: "/pitching", label: "피칭아이디어", icon: <LightbulbRounded /> },
   { href: "/personal", label: "개인 스케줄", icon: <SelfImprovementRounded /> },
   { href: "/stock", label: "주식 일정", icon: <ShowChartRounded /> },
 ];

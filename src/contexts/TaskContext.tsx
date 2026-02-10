@@ -54,6 +54,7 @@ interface TaskContextType {
   pitchingIdeas: PitchingIdea[];
   setTasks: React.Dispatch<React.SetStateAction<TimTask[]>>;
   deleteTask: (id: string) => void;
+  addTask: (task: TimTask) => void;
   updateTask: (id: string, updates: Partial<TimTask>) => void;
   toggleStar: (id: string) => void;
   moveHoldFixType: (taskId: string, newType: HoldFixType) => void;
@@ -117,6 +118,10 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       }
       return prev.filter((t) => t.id !== id);
     });
+  }, []);
+
+  const addTask = useCallback((task: TimTask) => {
+    setTasks((prev) => [...prev, { ...task, userEdited: true }]);
   }, []);
 
   const updateTask = useCallback((id: string, updates: Partial<TimTask>) => {
@@ -391,6 +396,18 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
             const existing = updatedTasks[existingIdx];
             if (existing.userEdited) return;
 
+            // If task already has collab or holdfix details, preserve them
+            const hasExistingDetails = existing.collabDetails || existing.holdFixDetails;
+            if (hasExistingDetails) {
+              // Only update sync metadata, don't touch content
+              updatedTasks[existingIdx] = {
+                ...existing,
+                lastSyncedAt: new Date().toISOString(),
+                endDate: gEndDate || existing.endDate,
+              };
+              return;
+            }
+
             const oldSnap = snapshots[gEvent.id];
             const gTitle = gEvent.summary || "(No Title)";
             const gDesc = gEvent.description || "";
@@ -457,6 +474,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         pitchingIdeas,
         setTasks,
         deleteTask,
+        addTask,
         updateTask,
         toggleStar,
         moveHoldFixType,

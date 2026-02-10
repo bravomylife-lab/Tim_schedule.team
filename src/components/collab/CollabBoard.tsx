@@ -7,12 +7,22 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
-import Menu from "@mui/material/Menu";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
-import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
+import Menu from "@mui/material/Menu";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
-import SyncProblemRounded from "@mui/icons-material/SyncProblemRounded";
-import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
+import AddRounded from "@mui/icons-material/AddRounded";
+import CloseRounded from "@mui/icons-material/CloseRounded";
 import { DndContext, DragEndEvent, closestCorners, useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -87,24 +97,232 @@ const detectPublishingCompany = (task: TimTask): { name: string; color: string }
   return { name: "—", color: "#9e9e9e" };
 };
 
-function CollabCard({
+interface DetailDialogProps {
+  open: boolean;
+  task: TimTask | null;
+  onClose: () => void;
+  onSave: (updates: Partial<TimTask>) => void;
+  onDelete: (id: string) => void;
+  onMoveToPitching?: (taskId: string, grade: PitchingGrade) => void;
+}
+
+function DetailDialog({ open, task, onClose, onSave, onDelete, onMoveToPitching }: DetailDialogProps) {
+  const details = task?.collabDetails;
+  const isCompleted = details?.status === "COMPLETED";
+
+  const [trackName, setTrackName] = useState(details?.trackName || "");
+  const [songName, setSongName] = useState(details?.songName || "");
+  const [trackProducer, setTrackProducer] = useState(details?.trackProducer || "");
+  const [topLiner, setTopLiner] = useState(details?.topLiner || "");
+  const [targetArtist, setTargetArtist] = useState(details?.targetArtist || "");
+  const [publishingInfo, setPublishingInfo] = useState(details?.publishingInfo || "");
+  const [deadline, setDeadline] = useState(details?.deadline || "");
+  const [requestedDate, setRequestedDate] = useState(details?.requestedDate || "");
+  const [status, setStatus] = useState<CollabStatus>(details?.status || "REQUESTED");
+  const [mixMonitorSent, setMixMonitorSent] = useState(details?.mixMonitorSent || false);
+  const [notes, setNotes] = useState(details?.notes || "");
+
+  const [gradeMenuAnchorEl, setGradeMenuAnchorEl] = useState<null | HTMLElement>(null);
+
+  useEffect(() => {
+    if (task) {
+      setTrackName(details?.trackName || "");
+      setSongName(details?.songName || "");
+      setTrackProducer(details?.trackProducer || "");
+      setTopLiner(details?.topLiner || "");
+      setTargetArtist(details?.targetArtist || "");
+      setPublishingInfo(details?.publishingInfo || "");
+      setDeadline(details?.deadline || "");
+      setRequestedDate(details?.requestedDate || "");
+      setStatus(details?.status || "REQUESTED");
+      setMixMonitorSent(details?.mixMonitorSent || false);
+      setNotes(details?.notes || "");
+    }
+  }, [task, details]);
+
+  const handleSave = () => {
+    if (!task) return;
+    onSave({
+      collabDetails: {
+        trackName,
+        songName,
+        trackProducer,
+        topLiner,
+        targetArtist,
+        publishingInfo,
+        deadline,
+        requestedDate,
+        status,
+        mixMonitorSent,
+        notes,
+      },
+    });
+    onClose();
+  };
+
+  const handleDelete = () => {
+    if (!task) return;
+    onDelete(task.id);
+    onClose();
+  };
+
+  const handleMoveToPitchingOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setGradeMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleGradeMenuClose = () => {
+    setGradeMenuAnchorEl(null);
+  };
+
+  const handleGradeSelect = (grade: PitchingGrade) => {
+    if (task && onMoveToPitching) {
+      onMoveToPitching(task.id, grade);
+      handleGradeMenuClose();
+      onClose();
+    }
+  };
+
+  return (
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          협업 상세
+          <IconButton onClick={onClose} size="small">
+            <CloseRounded />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2.5}>
+            <TextField
+              label="Track Name"
+              value={trackName}
+              onChange={(e) => setTrackName(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Song Name"
+              value={songName}
+              onChange={(e) => setSongName(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Track Producer"
+              value={trackProducer}
+              onChange={(e) => setTrackProducer(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Top Liner"
+              value={topLiner}
+              onChange={(e) => setTopLiner(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Target Artist"
+              value={targetArtist}
+              onChange={(e) => setTargetArtist(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Publishing Info"
+              value={publishingInfo}
+              onChange={(e) => setPublishingInfo(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Deadline"
+              type="date"
+              value={deadline ? deadline.split("T")[0] : ""}
+              onChange={(e) => setDeadline(e.target.value ? new Date(e.target.value).toISOString() : "")}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Requested Date"
+              type="date"
+              value={requestedDate ? requestedDate.split("T")[0] : ""}
+              onChange={(e) => setRequestedDate(e.target.value ? new Date(e.target.value).toISOString() : "")}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={status}
+                label="Status"
+                onChange={(e) => setStatus(e.target.value as CollabStatus)}
+              >
+                <MenuItem value="REQUESTED">협업 의뢰중</MenuItem>
+                <MenuItem value="IN_PROGRESS">협업 진행중</MenuItem>
+                <MenuItem value="COMPLETED">협업 완료</MenuItem>
+              </Select>
+            </FormControl>
+            {isCompleted && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={mixMonitorSent}
+                    onChange={(e) => setMixMonitorSent(e.target.checked)}
+                  />
+                }
+                label="Mix Monitor Sent"
+              />
+            )}
+            <TextField
+              label="Notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              fullWidth
+              multiline
+              rows={3}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button onClick={handleDelete} color="error" variant="outlined">
+            삭제
+          </Button>
+          {isCompleted && onMoveToPitching && (
+            <Button onClick={handleMoveToPitchingOpen} variant="outlined" color="primary">
+              피칭으로 이동
+            </Button>
+          )}
+          <Box sx={{ flex: 1 }} />
+          <Button onClick={onClose} variant="outlined">
+            취소
+          </Button>
+          <Button onClick={handleSave} variant="contained" color="primary">
+            저장
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Menu
+        anchorEl={gradeMenuAnchorEl}
+        open={Boolean(gradeMenuAnchorEl)}
+        onClose={handleGradeMenuClose}
+      >
+        <MenuItem onClick={() => handleGradeSelect("S")}>{gradeLabels.S}</MenuItem>
+        <MenuItem onClick={() => handleGradeSelect("A")}>{gradeLabels.A}</MenuItem>
+        <MenuItem onClick={() => handleGradeSelect("A_JPN")}>{gradeLabels.A_JPN}</MenuItem>
+      </Menu>
+    </>
+  );
+}
+
+function CompactCollabCard({
   task,
-  onToggleMix,
-  onMoveToPitching,
+  onClick,
   onDelete,
   onDismissModified,
 }: {
   task: TimTask;
-  onToggleMix: (id: string) => void;
-  onMoveToPitching: (taskId: string, grade: PitchingGrade) => void;
+  onClick: () => void;
   onDelete: (id: string) => void;
   onDismissModified: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
-
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const [gradeMenuAnchorEl, setGradeMenuAnchorEl] = useState<null | HTMLElement>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -114,122 +332,75 @@ function CollabCard({
 
   const details = task.collabDetails;
 
-  // D-Day calculation
   const deadlineDate = parseISOIfValid(details?.deadline);
   const dDay = deadlineDate ? differenceInCalendarDays(deadlineDate, new Date()) : null;
 
   const isUrgent = dDay !== null && dDay <= 3 && dDay >= 0 && details?.status !== "COMPLETED";
   const isOverdue = dDay !== null && dDay < 0 && details?.status !== "COMPLETED";
-  const isCompleted = details?.status === "COMPLETED";
 
   const publishingCompany = detectPublishingCompany(task);
 
-  // Menu handlers
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    event.stopPropagation();
-    setMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = (event?: React.MouseEvent) => {
-    if (event) event.stopPropagation();
-    setMenuAnchorEl(null);
-  };
-
-  const handleDelete = (event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onDelete(task.id);
-    handleMenuClose();
   };
 
-  const handleMoveToPitchingOpen = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    handleMenuClose();
-    setGradeMenuAnchorEl(event.currentTarget as HTMLElement);
-  };
-
-  const handleGradeMenuClose = (event?: React.MouseEvent) => {
-    if (event) event.stopPropagation();
-    setGradeMenuAnchorEl(null);
-  };
-
-  const handleGradeSelect = (event: React.MouseEvent, grade: PitchingGrade) => {
-    event.stopPropagation();
-    onMoveToPitching(task.id, grade);
-    handleGradeMenuClose();
-  };
-
-  const handleDismissModified = (event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleDismissModified = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onDismissModified(task.id);
   };
 
   return (
-    <>
-      <Paper
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        {...listeners}
-        sx={{
-          p: 2,
-          borderRadius: 4,
-          cursor: "grab",
-          backgroundColor: "#fff",
-          border: isUrgent || isOverdue ? "2px solid #ef5350" : "1px solid #e0e0e0",
-          transition: "border 0.2s ease",
-        }}
-      >
-        <Stack spacing={1.5}>
-          {/* Title line: Publishing chip + Producer name + Menu */}
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <Chip
-                label={publishingCompany.name}
-                size="small"
-                sx={{
-                  backgroundColor: publishingCompany.color,
-                  color: "#fff",
-                  fontWeight: "bold",
-                  fontSize: "0.75rem",
-                  height: 22,
-                }}
-              />
-              <Typography variant="subtitle1" fontWeight="700">
-                {details?.trackProducer || "TBD"}
-              </Typography>
-            </Stack>
-            <IconButton size="small" onClick={handleMenuOpen}>
-              <MoreVertRounded fontSize="small" />
-            </IconButton>
-          </Stack>
-
-          {/* Subtitle: Track/song name */}
-          <Typography variant="body2" color="text.secondary" fontWeight="500">
-            Track: {details?.trackName || task.title}
-          </Typography>
-
-          {/* Compact info row: Topliner | Artist */}
-          <Typography variant="caption" color="text.secondary">
-            탑라이너: {details?.topLiner || "TBD"} | 아티스트: {details?.targetArtist || "TBD"}
-          </Typography>
-
-          {/* Dates with D-day */}
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Typography variant="caption" color="text.secondary">
-              의뢰: {formatDate(details?.requestedDate || task.startDate)}
+    <Paper
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      sx={{
+        p: 1.5,
+        borderRadius: 2,
+        cursor: "pointer",
+        backgroundColor: "#fff",
+        border: "1px solid #e0e0e0",
+        borderLeft: isUrgent || isOverdue ? "4px solid #ef5350" : "1px solid #e0e0e0",
+        transition: "all 0.2s ease",
+        position: "relative",
+        minHeight: "50px",
+        maxHeight: "60px",
+        "&:hover": {
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        },
+      }}
+    >
+      <Stack spacing={0.5}>
+        {/* Line 1: Publishing chip + Producer + Track/Song + D-day + Delete */}
+        <Stack direction="row" alignItems="center" spacing={1} justifyContent="space-between">
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, overflow: "hidden" }}>
+            <Chip
+              label={publishingCompany.name}
+              size="small"
+              sx={{
+                backgroundColor: publishingCompany.color,
+                color: "#fff",
+                fontWeight: "bold",
+                fontSize: "0.7rem",
+                height: 18,
+                minWidth: 40,
+              }}
+            />
+            <Typography variant="body2" fontWeight="600" noWrap sx={{ maxWidth: 120 }}>
+              {details?.trackProducer || "TBD"}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              |
+            <Typography variant="body2" color="text.secondary" noWrap sx={{ flex: 1 }}>
+              — {details?.trackName || task.title}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              마감: {formatDate(details?.deadline)}
-            </Typography>
-            {dDay !== null && dDay >= 0 && !isCompleted && (
+            {dDay !== null && dDay >= 0 && details?.status !== "COMPLETED" && (
               <Chip
                 label={`D-${dDay}`}
                 color={isUrgent ? "error" : "default"}
                 size="small"
-                sx={{ height: 20, fontSize: "0.7rem", fontWeight: "bold" }}
+                sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold" }}
               />
             )}
             {isOverdue && (
@@ -237,118 +408,48 @@ function CollabCard({
                 label="Overdue"
                 color="error"
                 size="small"
-                sx={{ height: 20, fontSize: "0.7rem", fontWeight: "bold" }}
+                sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold" }}
               />
             )}
           </Stack>
-
-          {/* Modified badge */}
-          {task.calendarModified && (
-            <Chip
-              label="Modified"
-              icon={<SyncProblemRounded fontSize="small" />}
-              size="small"
-              color="warning"
-              onClick={handleDismissModified}
-              sx={{ width: "fit-content", cursor: "pointer" }}
-            />
-          )}
-
-          {/* Mix monitor chip (completed only) */}
-          {isCompleted && (
-            <Chip
-              label={`믹스 모니터 ${details?.mixMonitorSent ? "O" : "X"}`}
-              color={details?.mixMonitorSent ? "success" : "default"}
-              size="small"
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleMix(task.id);
-              }}
-              sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer" }}
-            />
-          )}
-
-          {/* Memo section */}
-          {details?.notes && (
-            <>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: "600", mt: 0.5 }}
-              >
-                ─── 메모 ───
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            {task.calendarModified && (
+              <Box
+                onClick={handleDismissModified}
                 sx={{
-                  fontStyle: "italic",
-                  p: 1,
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: 1,
-                  whiteSpace: "pre-wrap",
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  backgroundColor: "#ff9800",
+                  cursor: "pointer",
+                  "&:hover": { backgroundColor: "#f57c00" },
                 }}
-              >
-                {details.notes}
-              </Typography>
-            </>
-          )}
-
-          {/* Move to pitching button (completed only) */}
-          {isCompleted && (
-            <Chip
-              label="피칭아이디어로 이동"
-              icon={<ArrowForwardRounded fontSize="small" />}
-              onClick={handleMoveToPitchingOpen}
-              size="small"
-              variant="outlined"
-              color="primary"
-              sx={{ width: "fit-content", cursor: "pointer", fontWeight: "600" }}
-            />
-          )}
+              />
+            )}
+            <IconButton size="small" onClick={handleDelete}>
+              <DeleteOutlineRounded fontSize="small" />
+            </IconButton>
+          </Stack>
         </Stack>
-      </Paper>
 
-      {/* Main menu: Delete, Move to Pitching */}
-      <Menu
-        anchorEl={menuAnchorEl}
-        open={Boolean(menuAnchorEl)}
-        onClose={() => handleMenuClose()}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <MenuItem onClick={handleDelete}>
-          <DeleteOutlineRounded fontSize="small" sx={{ mr: 1 }} />
-          삭제
-        </MenuItem>
-        {isCompleted && (
-          <MenuItem onClick={handleMoveToPitchingOpen}>
-            <ArrowForwardRounded fontSize="small" sx={{ mr: 1 }} />
-            피칭으로 이동
-          </MenuItem>
-        )}
-      </Menu>
-
-      {/* Grade selection menu */}
-      <Menu
-        anchorEl={gradeMenuAnchorEl}
-        open={Boolean(gradeMenuAnchorEl)}
-        onClose={() => handleGradeMenuClose()}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <MenuItem onClick={(e) => handleGradeSelect(e, "S")}>{gradeLabels.S}</MenuItem>
-        <MenuItem onClick={(e) => handleGradeSelect(e, "A")}>{gradeLabels.A}</MenuItem>
-        <MenuItem onClick={(e) => handleGradeSelect(e, "A_JPN")}>{gradeLabels.A_JPN}</MenuItem>
-      </Menu>
-    </>
+        {/* Line 2: Caption: Topliner | Target Artist | 의뢰일 */}
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
+          {details?.topLiner || "TBD"} | {details?.targetArtist || "TBD"} | 의뢰일:{" "}
+          {formatDate(details?.requestedDate || task.startDate)}
+        </Typography>
+      </Stack>
+    </Paper>
   );
 }
 
-function CollabCardStatic({
+function CompactCollabCardStatic({
   task,
+  onClick,
   onDelete,
   onDismissModified,
 }: {
   task: TimTask;
+  onClick: () => void;
   onDelete: (id: string) => void;
   onDismissModified: (id: string) => void;
 }) {
@@ -357,94 +458,62 @@ function CollabCardStatic({
   const dDay = deadlineDate ? differenceInCalendarDays(deadlineDate, new Date()) : null;
   const isUrgent = dDay !== null && dDay <= 3 && dDay >= 0 && details?.status !== "COMPLETED";
   const isOverdue = dDay !== null && dDay < 0 && details?.status !== "COMPLETED";
-  const isCompleted = details?.status === "COMPLETED";
-
   const publishingCompany = detectPublishingCompany(task);
 
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    event.stopPropagation();
-    setMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = (event?: React.MouseEvent) => {
-    if (event) event.stopPropagation();
-    setMenuAnchorEl(null);
-  };
-
-  const handleDelete = (event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onDelete(task.id);
-    handleMenuClose();
   };
 
-  const handleDismissModified = (event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleDismissModified = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onDismissModified(task.id);
   };
 
   return (
-    <>
-      <Paper
-        sx={{
-          p: 2,
-          borderRadius: 4,
-          backgroundColor: "#fff",
-          border: isUrgent || isOverdue ? "2px solid #ef5350" : "1px solid #e0e0e0",
-        }}
-      >
-        <Stack spacing={1.5}>
-          {/* Title line */}
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <Chip
-                label={publishingCompany.name}
-                size="small"
-                sx={{
-                  backgroundColor: publishingCompany.color,
-                  color: "#fff",
-                  fontWeight: "bold",
-                  fontSize: "0.75rem",
-                  height: 22,
-                }}
-              />
-              <Typography variant="subtitle1" fontWeight="700">
-                {details?.trackProducer || "TBD"}
-              </Typography>
-            </Stack>
-            <IconButton size="small" onClick={handleMenuOpen}>
-              <MoreVertRounded fontSize="small" />
-            </IconButton>
-          </Stack>
-
-          {/* Subtitle */}
-          <Typography variant="body2" color="text.secondary" fontWeight="500">
-            Track: {details?.trackName || task.title}
-          </Typography>
-
-          {/* Info row */}
-          <Typography variant="caption" color="text.secondary">
-            탑라이너: {details?.topLiner || "TBD"} | 아티스트: {details?.targetArtist || "TBD"}
-          </Typography>
-
-          {/* Dates */}
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Typography variant="caption" color="text.secondary">
-              의뢰: {formatDate(details?.requestedDate || task.startDate)}
+    <Paper
+      onClick={onClick}
+      sx={{
+        p: 1.5,
+        borderRadius: 2,
+        cursor: "pointer",
+        backgroundColor: "#fff",
+        border: "1px solid #e0e0e0",
+        borderLeft: isUrgent || isOverdue ? "4px solid #ef5350" : "1px solid #e0e0e0",
+        minHeight: "50px",
+        maxHeight: "60px",
+        "&:hover": {
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        },
+      }}
+    >
+      <Stack spacing={0.5}>
+        <Stack direction="row" alignItems="center" spacing={1} justifyContent="space-between">
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, overflow: "hidden" }}>
+            <Chip
+              label={publishingCompany.name}
+              size="small"
+              sx={{
+                backgroundColor: publishingCompany.color,
+                color: "#fff",
+                fontWeight: "bold",
+                fontSize: "0.7rem",
+                height: 18,
+                minWidth: 40,
+              }}
+            />
+            <Typography variant="body2" fontWeight="600" noWrap sx={{ maxWidth: 120 }}>
+              {details?.trackProducer || "TBD"}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              |
+            <Typography variant="body2" color="text.secondary" noWrap sx={{ flex: 1 }}>
+              — {details?.trackName || task.title}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              마감: {formatDate(details?.deadline)}
-            </Typography>
-            {dDay !== null && dDay >= 0 && !isCompleted && (
+            {dDay !== null && dDay >= 0 && details?.status !== "COMPLETED" && (
               <Chip
                 label={`D-${dDay}`}
                 color={isUrgent ? "error" : "default"}
                 size="small"
-                sx={{ height: 20, fontSize: "0.7rem", fontWeight: "bold" }}
+                sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold" }}
               />
             )}
             {isOverdue && (
@@ -452,92 +521,47 @@ function CollabCardStatic({
                 label="Overdue"
                 color="error"
                 size="small"
-                sx={{ height: 20, fontSize: "0.7rem", fontWeight: "bold" }}
+                sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold" }}
               />
             )}
           </Stack>
-
-          {/* Modified badge */}
-          {task.calendarModified && (
-            <Chip
-              label="Modified"
-              icon={<SyncProblemRounded fontSize="small" />}
-              size="small"
-              color="warning"
-              onClick={handleDismissModified}
-              sx={{ width: "fit-content", cursor: "pointer" }}
-            />
-          )}
-
-          {/* Mix monitor */}
-          {isCompleted && (
-            <Chip
-              label={`믹스 모니터 ${details?.mixMonitorSent ? "O" : "X"}`}
-              color={details?.mixMonitorSent ? "success" : "default"}
-              size="small"
-              sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
-            />
-          )}
-
-          {/* Memo */}
-          {details?.notes && (
-            <>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: "600", mt: 0.5 }}
-              >
-                ─── 메모 ───
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            {task.calendarModified && (
+              <Box
+                onClick={handleDismissModified}
                 sx={{
-                  fontStyle: "italic",
-                  p: 1,
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: 1,
-                  whiteSpace: "pre-wrap",
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  backgroundColor: "#ff9800",
+                  cursor: "pointer",
+                  "&:hover": { backgroundColor: "#f57c00" },
                 }}
-              >
-                {details.notes}
-              </Typography>
-            </>
-          )}
-
-          {/* Move button disabled */}
-          {isCompleted && (
-            <Chip
-              label="피칭아이디어로 이동"
-              icon={<ArrowForwardRounded fontSize="small" />}
-              disabled
-              size="small"
-              variant="outlined"
-              sx={{ width: "fit-content" }}
-            />
-          )}
+              />
+            )}
+            <IconButton size="small" onClick={handleDelete}>
+              <DeleteOutlineRounded fontSize="small" />
+            </IconButton>
+          </Stack>
         </Stack>
-      </Paper>
-
-      {/* Menu */}
-      <Menu
-        anchorEl={menuAnchorEl}
-        open={Boolean(menuAnchorEl)}
-        onClose={() => handleMenuClose()}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <MenuItem onClick={handleDelete}>
-          <DeleteOutlineRounded fontSize="small" sx={{ mr: 1 }} />
-          삭제
-        </MenuItem>
-      </Menu>
-    </>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
+          {details?.topLiner || "TBD"} | {details?.targetArtist || "TBD"} | 의뢰일:{" "}
+          {formatDate(details?.requestedDate || task.startDate)}
+        </Typography>
+      </Stack>
+    </Paper>
   );
 }
 
 export default function CollabBoard() {
-  const { tasks: allTasks, moveToPitching, deleteTask, dismissCalendarModified, updateTask } =
-    useTaskContext();
+  const {
+    tasks: allTasks,
+    moveToPitching,
+    deleteTask,
+    dismissCalendarModified,
+    updateTask,
+    addTask,
+  } = useTaskContext();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -566,6 +590,11 @@ export default function CollabBoard() {
     });
     return map;
   }, [tasks]);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TimTask | null>(null);
+  const [createMode, setCreateMode] = useState(false);
+  const [createColumnStatus, setCreateColumnStatus] = useState<CollabStatus>("REQUESTED");
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over) return;
@@ -599,27 +628,66 @@ export default function CollabBoard() {
 
       return updated;
     });
+
+    // PERSISTENCE FIX: update context as well
+    if (nextStatus && activeTask.collabDetails) {
+      updateTask(activeTask.id, {
+        collabDetails: {
+          ...activeTask.collabDetails,
+          status: nextStatus as CollabStatus,
+        },
+      });
+    }
   };
 
-  const handleToggleMix = (id: string) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id !== id) return task;
-        const details = task.collabDetails;
-        if (!details) return task;
-        return {
-          ...task,
-          collabDetails: {
-            ...details,
-            mixMonitorSent: !details.mixMonitorSent,
-          },
-        };
-      })
-    );
+  const handleCardClick = (task: TimTask) => {
+    setSelectedTask(task);
+    setCreateMode(false);
+    setDialogOpen(true);
   };
 
-  const handleMoveToPitching = (taskId: string, grade: PitchingGrade) => {
-    moveToPitching(taskId, grade);
+  const handleCreateNew = (columnStatus: CollabStatus) => {
+    setSelectedTask({
+      id: `collab-${Date.now()}`,
+      title: "새 협업",
+      startDate: new Date().toISOString(),
+      category: "COLLAB",
+      userEdited: true,
+      collabDetails: {
+        trackName: "",
+        songName: "",
+        trackProducer: "",
+        topLiner: "",
+        targetArtist: "",
+        publishingInfo: "",
+        deadline: new Date().toISOString(),
+        requestedDate: new Date().toISOString(),
+        status: columnStatus,
+        notes: "",
+      },
+    });
+    setCreateMode(true);
+    setCreateColumnStatus(columnStatus);
+    setDialogOpen(true);
+  };
+
+  const handleSave = (updates: Partial<TimTask>) => {
+    if (createMode && selectedTask) {
+      // Create new task
+      const newTask: TimTask = {
+        ...selectedTask,
+        ...updates,
+        id: `collab-${Date.now()}`,
+        title: updates.collabDetails?.trackName || "새 협업",
+        startDate: new Date().toISOString(),
+        category: "COLLAB",
+        userEdited: true,
+      };
+      addTask(newTask);
+    } else if (selectedTask) {
+      // Update existing task
+      updateTask(selectedTask.id, updates);
+    }
   };
 
   const handleDelete = (taskId: string) => {
@@ -645,10 +713,10 @@ export default function CollabBoard() {
                 columnId={column.id}
                 title={column.title}
                 tasks={groupedTasks[column.id]}
-                onToggleMix={handleToggleMix}
-                onMoveToPitching={handleMoveToPitching}
+                onCardClick={handleCardClick}
                 onDelete={handleDelete}
                 onDismissModified={handleDismissModified}
+                onCreateNew={handleCreateNew}
               />
             ))}
           </Box>
@@ -657,14 +725,20 @@ export default function CollabBoard() {
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 3 }}>
           {columns.map((column) => (
             <Paper key={column.id} sx={{ p: 2, backgroundColor: "#f8f9ff" }}>
-              <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                {column.title}
-              </Typography>
-              <Stack spacing={2}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Typography variant="subtitle1">
+                  {column.title} ({groupedTasks[column.id].length})
+                </Typography>
+                <IconButton size="small" onClick={() => handleCreateNew(column.id)}>
+                  <AddRounded />
+                </IconButton>
+              </Stack>
+              <Stack spacing={1.5}>
                 {groupedTasks[column.id].map((task) => (
-                  <CollabCardStatic
+                  <CompactCollabCardStatic
                     key={task.id}
                     task={task}
+                    onClick={() => handleCardClick(task)}
                     onDelete={handleDelete}
                     onDismissModified={handleDismissModified}
                   />
@@ -674,6 +748,15 @@ export default function CollabBoard() {
           ))}
         </Box>
       )}
+
+      <DetailDialog
+        open={dialogOpen}
+        task={selectedTask}
+        onClose={() => setDialogOpen(false)}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        onMoveToPitching={moveToPitching}
+      />
     </Box>
   );
 }
@@ -682,40 +765,81 @@ function CollabColumn({
   columnId,
   title,
   tasks,
-  onToggleMix,
-  onMoveToPitching,
+  onCardClick,
   onDelete,
   onDismissModified,
+  onCreateNew,
 }: {
   columnId: CollabStatus;
   title: string;
   tasks: TimTask[];
-  onToggleMix: (id: string) => void;
-  onMoveToPitching: (taskId: string, grade: PitchingGrade) => void;
+  onCardClick: (task: TimTask) => void;
   onDelete: (id: string) => void;
   onDismissModified: (id: string) => void;
+  onCreateNew: (columnStatus: CollabStatus) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: columnId });
 
   return (
-    <Paper ref={setNodeRef} sx={{ p: 2, backgroundColor: "#f8f9ff" }}>
-      <Typography variant="subtitle1" sx={{ mb: 2 }}>
-        {title}
-      </Typography>
-      <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-        <Stack spacing={2}>
-          {tasks.map((task) => (
-            <CollabCard
-              key={task.id}
-              task={task}
-              onToggleMix={onToggleMix}
-              onMoveToPitching={onMoveToPitching}
-              onDelete={onDelete}
-              onDismissModified={onDismissModified}
-            />
-          ))}
-        </Stack>
-      </SortableContext>
+    <Paper
+      ref={setNodeRef}
+      sx={{
+        p: 2,
+        backgroundColor: "#f8f9ff",
+        display: "flex",
+        flexDirection: "column",
+        maxHeight: "calc(100vh - 280px)",
+      }}
+    >
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight="600">
+          {title} ({tasks.length})
+        </Typography>
+        <IconButton
+          size="small"
+          onClick={() => onCreateNew(columnId)}
+          sx={{
+            backgroundColor: "primary.main",
+            color: "#fff",
+            "&:hover": { backgroundColor: "primary.dark" },
+          }}
+        >
+          <AddRounded fontSize="small" />
+        </IconButton>
+      </Stack>
+      <Box
+        sx={{
+          overflowY: "auto",
+          flex: 1,
+          "&::-webkit-scrollbar": {
+            width: "6px",
+          },
+          "&::-webkit-scrollbar-track": {
+            backgroundColor: "transparent",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: "#bdbdbd",
+            borderRadius: "3px",
+            "&:hover": {
+              backgroundColor: "#9e9e9e",
+            },
+          },
+        }}
+      >
+        <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
+          <Stack spacing={1.5}>
+            {tasks.map((task) => (
+              <CompactCollabCard
+                key={task.id}
+                task={task}
+                onClick={() => onCardClick(task)}
+                onDelete={onDelete}
+                onDismissModified={onDismissModified}
+              />
+            ))}
+          </Stack>
+        </SortableContext>
+      </Box>
     </Paper>
   );
 }
