@@ -40,6 +40,17 @@ import {
 } from "date-fns";
 import { useTaskContext } from "@/contexts/TaskContext";
 
+// Korean day names mapping
+const KOREAN_DAYS: Record<string, string> = {
+  Sunday: '일요일',
+  Monday: '월요일',
+  Tuesday: '화요일',
+  Wednesday: '수요일',
+  Thursday: '목요일',
+  Friday: '금요일',
+  Saturday: '토요일',
+};
+
 interface SortableTaskCardProps {
   task: TimTask;
   onToggleStar: (id: string) => void;
@@ -91,9 +102,19 @@ function SortableTaskCard({
                 {task.title}
               </Typography>
               {task.startDate && (
-                <Typography variant="caption" color="text.secondary">
-                  {format(parseISO(task.startDate), "MMM d, yyyy")}
-                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="caption" color="text.secondary">
+                    {format(parseISO(task.startDate), "MMM d, yyyy")}
+                  </Typography>
+                  {isToday(parseISO(task.startDate)) && (
+                    <Chip
+                      label="오늘"
+                      size="small"
+                      color="primary"
+                      sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }}
+                    />
+                  )}
+                </Stack>
               )}
             </Box>
             <Stack direction="row" spacing={0.5}>
@@ -143,19 +164,39 @@ export default function OverviewBoard() {
     setMounted(true);
   }, []);
 
+  // Sort helper: starred first, today next, then by date
+  const sortTasks = (taskList: TimTask[]) => {
+    return [...taskList].sort((a, b) => {
+      // Starred first
+      if (a.isStarred && !b.isStarred) return -1;
+      if (!a.isStarred && b.isStarred) return 1;
+      // Today's tasks next
+      const aIsToday = a.startDate ? isToday(parseISO(a.startDate)) : false;
+      const bIsToday = b.startDate ? isToday(parseISO(b.startDate)) : false;
+      if (aIsToday && !bIsToday) return -1;
+      if (!aIsToday && bIsToday) return 1;
+      // Then by date ascending
+      if (!a.startDate && !b.startDate) return 0;
+      if (!a.startDate) return 1;
+      if (!b.startDate) return -1;
+      return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+    });
+  };
+
   // Filter urgent tasks: past, today, or tomorrow
   const urgentTasks = useMemo(() => {
     const musicTasks = tasks.filter(
       (task) => task.category === "WEEKLY" || task.category === "URGENT"
     );
 
-    return musicTasks.filter((task) =>
+    const filtered = musicTasks.filter((task) =>
       task.startDate
         ? isPast(parseISO(task.startDate)) ||
           isToday(parseISO(task.startDate)) ||
           isTomorrow(parseISO(task.startDate))
         : false
     );
+    return sortTasks(filtered);
   }, [tasks]);
 
   // Filter weekly tasks: within 7 days but NOT urgent
@@ -166,7 +207,7 @@ export default function OverviewBoard() {
       (task) => task.category === "WEEKLY" || task.category === "URGENT"
     );
 
-    return musicTasks.filter((task) => {
+    const filtered = musicTasks.filter((task) => {
       if (!task.startDate) {
         return false;
       }
@@ -179,6 +220,7 @@ export default function OverviewBoard() {
       const isUrgent = isPast(date) || isToday(date) || isTomorrow(date);
       return inWindow && !isUrgent;
     });
+    return sortTasks(filtered);
   }, [tasks]);
 
   const [urgentList, setUrgentList] = useState<TimTask[]>(urgentTasks);
@@ -210,8 +252,22 @@ export default function OverviewBoard() {
     setWeeklyList((items) => arrayMove(items, oldIndex, newIndex));
   };
 
+  // Get today's date formatted in Korean
+  const todayDate = new Date();
+  const dayName = KOREAN_DAYS[format(todayDate, 'EEEE')] || format(todayDate, 'EEEE');
+
   return (
     <Box>
+      {/* Today's Date Display */}
+      <Box sx={{ mb: 3, textAlign: 'center' }}>
+        <Typography variant="h4" fontWeight={700} color="text.primary">
+          {format(todayDate, 'yyyy년 M월 d일')}
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary">
+          {dayName}
+        </Typography>
+      </Box>
+
       <SectionHeader
         title="Overview"
         subtitle="오늘/내일 긴급 업무와 7일 내 TASK를 한 번에 관리합니다"

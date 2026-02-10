@@ -34,6 +34,9 @@ import {
   getDay,
   addMonths,
   subMonths,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
 } from "date-fns";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -70,9 +73,14 @@ export default function StockBoard() {
   };
 
   const getEventsForDay = (date: Date) => {
-    return stockTasks.filter((task) =>
-      isSameDay(parseISO(task.startDate), date)
-    );
+    return stockTasks.filter((task) => {
+      const start = parseISO(task.startDate);
+      if (task.endDate) {
+        const end = parseISO(task.endDate);
+        return isWithinInterval(date, { start: startOfDay(start), end: endOfDay(end) });
+      }
+      return isSameDay(start, date);
+    });
   };
 
   const handleDayClick = (date: Date) => {
@@ -183,7 +191,7 @@ export default function StockBoard() {
       <Grid container spacing={3}>
         <Grid size={{ xs: 12 }}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: 0 }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
                 <IconButton onClick={handlePrevMonth}>
                   <ChevronLeftIcon />
@@ -203,7 +211,7 @@ export default function StockBoard() {
                   sx={{
                     display: "grid",
                     gridTemplateColumns: "repeat(7, 1fr)",
-                    gap: 1,
+                    gap: 0.5,
                     mb: 1,
                   }}
                 >
@@ -225,12 +233,12 @@ export default function StockBoard() {
                   sx={{
                     display: "grid",
                     gridTemplateColumns: "repeat(7, 1fr)",
-                    gap: 1,
+                    gap: 0.5,
                   }}
                 >
                   {/* Empty cells for days before month starts */}
                   {Array.from({ length: getDay(calendarDays[0]) }).map((_, i) => (
-                    <Box key={`empty-${i}`} sx={{ minHeight: 80 }} />
+                    <Box key={`empty-${i}`} sx={{ minHeight: 110 }} />
                   ))}
 
                   {/* Actual calendar days */}
@@ -243,7 +251,7 @@ export default function StockBoard() {
                         key={date.toISOString()}
                         onClick={() => handleDayClick(date)}
                         sx={{
-                          minHeight: 80,
+                          minHeight: 110,
                           border: "2px solid",
                           borderColor: isToday(date) ? "primary.main" : "divider",
                           borderRadius: 1,
@@ -276,11 +284,12 @@ export default function StockBoard() {
                             <Typography
                               variant="caption"
                               sx={{
-                                display: "block",
-                                fontSize: "0.75rem",
+                                display: "-webkit-box",
+                                fontSize: "0.7rem",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
                                 bgcolor: isToday(date)
                                   ? "rgba(255, 255, 255, 0.3)"
                                   : "rgba(13, 202, 240, 0.15)",
@@ -291,7 +300,7 @@ export default function StockBoard() {
                                 fontWeight: 600,
                               }}
                             >
-                              {event.stockDetails?.ticker || event.title}
+                              {event.stockDetails?.ticker ? `${event.stockDetails.ticker} ${event.title.substring(0, 15)}` : event.title.substring(0, 20)}
                             </Typography>
                           </Box>
                         ))}

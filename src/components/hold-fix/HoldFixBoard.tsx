@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -13,7 +12,10 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import IconButton from "@mui/material/IconButton";
+import Collapse from "@mui/material/Collapse";
 import DeleteIcon from "@mui/icons-material/Delete";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import SectionHeader from "@/components/SectionHeader";
 import { useTaskContext } from "@/contexts/TaskContext";
 import { TimTask, HoldFixType, HoldFixDetails, Currency } from "@/types/tim";
@@ -110,14 +112,15 @@ function DateSelect({ value, onChange }: DateSelectProps) {
   );
 }
 
-interface HoldFixCardProps {
+interface CompactCardProps {
   task: TimTask;
   onUpdate: (updates: Partial<HoldFixDetails>) => void;
   onDelete: () => void;
   isDragging?: boolean;
 }
 
-function HoldFixCard({ task, onUpdate, onDelete, isDragging }: HoldFixCardProps) {
+function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const details = task.holdFixDetails!;
   const type = details.type;
 
@@ -152,6 +155,12 @@ function HoldFixCard({ task, onUpdate, onDelete, isDragging }: HoldFixCardProps)
       .join(", ");
   };
 
+  const formatWritersCompact = () => {
+    if (!details.writers || details.writers.length === 0) return "—";
+    if (details.writers.length <= 2) return details.writers.join(", ");
+    return `${details.writers[0]}, ${details.writers[1]} +${details.writers.length - 2}`;
+  };
+
   const formatWritersWithSplits = () => {
     if (!details.writers || details.writers.length === 0) return null;
 
@@ -168,189 +177,248 @@ function HoldFixCard({ task, onUpdate, onDelete, isDragging }: HoldFixCardProps)
   return (
     <Card
       sx={{
-        border: `2px solid ${borderColor}`,
+        border: `1px solid ${borderColor}`,
         opacity: isDragging ? 0.5 : 1,
         cursor: isDragging ? "grabbing" : "grab",
+        transition: "all 0.2s ease",
+        "&:hover": {
+          boxShadow: expanded ? undefined : 2,
+        },
       }}
     >
-      <CardContent>
-        <Stack spacing={1.5}>
-          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
-              <Chip label={type} color={chipColor} size="small" />
-            </Stack>
-            <IconButton size="small" onClick={onDelete} color="error">
-              <DeleteIcon fontSize="small" />
-            </IconButton>
+      <Box
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button, input, textarea")) return;
+          setExpanded(!expanded);
+        }}
+        sx={{
+          px: 1.5,
+          py: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          minHeight: 48,
+          cursor: "pointer",
+          "&:hover": {
+            bgcolor: expanded ? undefined : "rgba(0, 0, 0, 0.02)",
+          },
+        }}
+      >
+        <Chip label={type} color={chipColor} size="small" sx={{ minWidth: 70 }} />
+
+        <Box sx={{ flex: 1, overflow: "hidden" }}>
+          <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>
+            {details.demoName || "Untitled Demo"}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }} noWrap>
+            {formatWritersCompact()}
+            {details.targetArtist && ` → ${details.targetArtist}`}
+          </Typography>
+        </Box>
+
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(!expanded);
+          }}
+          sx={{ flexShrink: 0 }}
+        >
+          {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          color="error"
+          sx={{ flexShrink: 0 }}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      <Collapse in={expanded} timeout="auto">
+        <Box sx={{ px: 2, pb: 2, pt: 1, borderTop: "1px solid rgba(0, 0, 0, 0.08)" }}>
+          <Stack spacing={1.5}>
+            <TextField
+              label="Demo Name"
+              size="small"
+              fullWidth
+              value={details.demoName || ""}
+              onChange={(e) => onUpdate({ demoName: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <TextField
+              label="Target Artist"
+              size="small"
+              fullWidth
+              value={details.targetArtist || ""}
+              onChange={(e) => onUpdate({ targetArtist: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <TextField
+              label="Writers (comma-separated)"
+              size="small"
+              fullWidth
+              value={details.writers?.join(", ") || ""}
+              onChange={(e) => handleWritersChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <TextField
+              label="Splits (e.g., John 50%, Jane 50%)"
+              size="small"
+              fullWidth
+              value={details.splits ? formatSplits(details.splits) : ""}
+              onChange={(e) => handleSplitsChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            {formatWritersWithSplits() && (
+              <Box sx={{ p: 1.5, bgcolor: "rgba(0, 0, 0, 0.03)", borderRadius: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                  Writers & Splits
+                </Typography>
+                <Typography variant="body2">
+                  {formatWritersWithSplits()}
+                </Typography>
+              </Box>
+            )}
+
+            <TextField
+              label="Publishing Info"
+              size="small"
+              fullWidth
+              value={details.publishingInfo || ""}
+              onChange={(e) => onUpdate({ publishingInfo: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <TextField
+              label="Email"
+              size="small"
+              fullWidth
+              type="email"
+              value={details.email || ""}
+              onChange={(e) => onUpdate({ email: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <TextField
+              label="Notes / 메모"
+              size="small"
+              fullWidth
+              multiline
+              rows={3}
+              value={details.notes || ""}
+              onChange={(e) => onUpdate({ notes: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            {type === "HOLD" && (
+              <>
+                <Box onClick={(e) => e.stopPropagation()}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+                    Hold Requested Date
+                  </Typography>
+                  <DateSelect
+                    value={details.holdRequestedDate}
+                    onChange={(date) => onUpdate({ holdRequestedDate: date })}
+                  />
+                </Box>
+
+                <TextField
+                  label="Hold Period"
+                  size="small"
+                  fullWidth
+                  value={details.holdPeriod || ""}
+                  onChange={(e) => onUpdate({ holdPeriod: e.target.value })}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </>
+            )}
+
+            {type === "FIX" && (
+              <>
+                <Box onClick={(e) => e.stopPropagation()}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+                    Fix Date
+                  </Typography>
+                  <DateSelect
+                    value={details.fixDate}
+                    onChange={(date) => onUpdate({ fixDate: date })}
+                  />
+                </Box>
+
+                <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
+                  <TextField
+                    label="Production Fee"
+                    size="small"
+                    type="number"
+                    value={details.productionFee || ""}
+                    onChange={(e) => onUpdate({ productionFee: parseFloat(e.target.value) || 0 })}
+                    sx={{ flex: 1 }}
+                  />
+                  <FormControl size="small" sx={{ minWidth: 90 }}>
+                    <InputLabel>Currency</InputLabel>
+                    <Select
+                      value={details.currency || "KRW"}
+                      label="Currency"
+                      onChange={(e) => onUpdate({ currency: e.target.value as Currency })}
+                    >
+                      <MenuItem value="KRW">KRW</MenuItem>
+                      <MenuItem value="USD">USD</MenuItem>
+                      <MenuItem value="EUR">EUR</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Stack>
+              </>
+            )}
+
+            {type === "RELEASE" && (
+              <>
+                <Box onClick={(e) => e.stopPropagation()}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+                    Release Date
+                  </Typography>
+                  <DateSelect
+                    value={details.releaseDate}
+                    onChange={(date) => onUpdate({ releaseDate: date })}
+                  />
+                </Box>
+
+                <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
+                  <TextField
+                    label="Production Fee"
+                    size="small"
+                    type="number"
+                    value={details.productionFee || ""}
+                    onChange={(e) => onUpdate({ productionFee: parseFloat(e.target.value) || 0 })}
+                    sx={{ flex: 1 }}
+                  />
+                  <FormControl size="small" sx={{ minWidth: 90 }}>
+                    <InputLabel>Currency</InputLabel>
+                    <Select
+                      value={details.currency || "KRW"}
+                      label="Currency"
+                      onChange={(e) => onUpdate({ currency: e.target.value as Currency })}
+                    >
+                      <MenuItem value="KRW">KRW</MenuItem>
+                      <MenuItem value="USD">USD</MenuItem>
+                      <MenuItem value="EUR">EUR</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Stack>
+              </>
+            )}
           </Stack>
-
-          <TextField
-            label="Demo Name"
-            size="small"
-            fullWidth
-            value={details.demoName || ""}
-            onChange={(e) => onUpdate({ demoName: e.target.value })}
-          />
-
-          <TextField
-            label="Target Artist"
-            size="small"
-            fullWidth
-            value={details.targetArtist || ""}
-            onChange={(e) => onUpdate({ targetArtist: e.target.value })}
-          />
-
-          <TextField
-            label="Writers (comma-separated)"
-            size="small"
-            fullWidth
-            value={details.writers?.join(", ") || ""}
-            onChange={(e) => handleWritersChange(e.target.value)}
-          />
-
-          <TextField
-            label="Splits (e.g., John 50%, Jane 50%)"
-            size="small"
-            fullWidth
-            value={details.splits ? formatSplits(details.splits) : ""}
-            onChange={(e) => handleSplitsChange(e.target.value)}
-          />
-
-          {formatWritersWithSplits() && (
-            <Box sx={{ p: 1.5, bgcolor: "rgba(0, 0, 0, 0.03)", borderRadius: 1 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                Writers & Splits
-              </Typography>
-              <Typography variant="body2">
-                {formatWritersWithSplits()}
-              </Typography>
-            </Box>
-          )}
-
-          <TextField
-            label="Publishing Info"
-            size="small"
-            fullWidth
-            value={details.publishingInfo || ""}
-            onChange={(e) => onUpdate({ publishingInfo: e.target.value })}
-          />
-
-          <TextField
-            label="Email"
-            size="small"
-            fullWidth
-            type="email"
-            value={details.email || ""}
-            onChange={(e) => onUpdate({ email: e.target.value })}
-          />
-
-          <TextField
-            label="Notes / 메모"
-            size="small"
-            fullWidth
-            multiline
-            rows={3}
-            value={details.notes || ""}
-            onChange={(e) => onUpdate({ notes: e.target.value })}
-          />
-
-          {type === "HOLD" && (
-            <>
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                  Hold Requested Date
-                </Typography>
-                <DateSelect
-                  value={details.holdRequestedDate}
-                  onChange={(date) => onUpdate({ holdRequestedDate: date })}
-                />
-              </Box>
-
-              <TextField
-                label="Hold Period"
-                size="small"
-                fullWidth
-                value={details.holdPeriod || ""}
-                onChange={(e) => onUpdate({ holdPeriod: e.target.value })}
-              />
-            </>
-          )}
-
-          {type === "FIX" && (
-            <>
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                  Fix Date
-                </Typography>
-                <DateSelect
-                  value={details.fixDate}
-                  onChange={(date) => onUpdate({ fixDate: date })}
-                />
-              </Box>
-
-              <Stack direction="row" spacing={1}>
-                <TextField
-                  label="Production Fee"
-                  size="small"
-                  type="number"
-                  value={details.productionFee || ""}
-                  onChange={(e) => onUpdate({ productionFee: parseFloat(e.target.value) || 0 })}
-                  sx={{ flex: 1 }}
-                />
-                <FormControl size="small" sx={{ minWidth: 90 }}>
-                  <InputLabel>Currency</InputLabel>
-                  <Select
-                    value={details.currency || "KRW"}
-                    label="Currency"
-                    onChange={(e) => onUpdate({ currency: e.target.value as Currency })}
-                  >
-                    <MenuItem value="KRW">KRW</MenuItem>
-                    <MenuItem value="USD">USD</MenuItem>
-                    <MenuItem value="EUR">EUR</MenuItem>
-                  </Select>
-                </FormControl>
-              </Stack>
-            </>
-          )}
-
-          {type === "RELEASE" && (
-            <>
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                  Release Date
-                </Typography>
-                <DateSelect
-                  value={details.releaseDate}
-                  onChange={(date) => onUpdate({ releaseDate: date })}
-                />
-              </Box>
-
-              <Stack direction="row" spacing={1}>
-                <TextField
-                  label="Production Fee"
-                  size="small"
-                  type="number"
-                  value={details.productionFee || ""}
-                  onChange={(e) => onUpdate({ productionFee: parseFloat(e.target.value) || 0 })}
-                  sx={{ flex: 1 }}
-                />
-                <FormControl size="small" sx={{ minWidth: 90 }}>
-                  <InputLabel>Currency</InputLabel>
-                  <Select
-                    value={details.currency || "KRW"}
-                    label="Currency"
-                    onChange={(e) => onUpdate({ currency: e.target.value as Currency })}
-                  >
-                    <MenuItem value="KRW">KRW</MenuItem>
-                    <MenuItem value="USD">USD</MenuItem>
-                    <MenuItem value="EUR">EUR</MenuItem>
-                  </Select>
-                </FormControl>
-              </Stack>
-            </>
-          )}
-        </Stack>
-      </CardContent>
+        </Box>
+      </Collapse>
     </Card>
   );
 }
@@ -368,7 +436,7 @@ function DraggableCard({ task, onUpdate, onDelete }: DraggableCardProps) {
 
   return (
     <div ref={setNodeRef} {...listeners} {...attributes}>
-      <HoldFixCard task={task} onUpdate={onUpdate} onDelete={onDelete} isDragging={isDragging} />
+      <CompactCard task={task} onUpdate={onUpdate} onDelete={onDelete} isDragging={isDragging} />
     </div>
   );
 }
@@ -389,21 +457,39 @@ function Column({ type, tasks, onUpdate, onDelete }: ColumnProps) {
   const count = tasks.length;
 
   return (
-    <Box>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">{title}</Typography>
-        <Chip label={count} size="small" />
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5, px: 1 }}>
+        <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: 600 }}>
+          {title}
+        </Typography>
+        <Chip label={count} size="small" color={type === "FIX" ? "warning" : type === "RELEASE" ? "primary" : "default"} />
       </Stack>
       <Box
         ref={setNodeRef}
         sx={{
-          minHeight: 400,
-          p: 2,
+          flex: 1,
+          p: 1,
           bgcolor: "rgba(0, 0, 0, 0.02)",
           borderRadius: 1,
+          maxHeight: "calc(100vh - 250px)",
+          overflowY: "auto",
+          minHeight: 200,
+          "&::-webkit-scrollbar": {
+            width: 8,
+          },
+          "&::-webkit-scrollbar-track": {
+            bgcolor: "transparent",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            bgcolor: "rgba(0, 0, 0, 0.2)",
+            borderRadius: 4,
+            "&:hover": {
+              bgcolor: "rgba(0, 0, 0, 0.3)",
+            },
+          },
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={1}>
           {tasks.map((task) => (
             <DraggableCard
               key={task.id}
@@ -412,6 +498,19 @@ function Column({ type, tasks, onUpdate, onDelete }: ColumnProps) {
               onDelete={() => onDelete(task.id)}
             />
           ))}
+          {tasks.length === 0 && (
+            <Box
+              sx={{
+                p: 3,
+                textAlign: "center",
+                color: "text.secondary",
+              }}
+            >
+              <Typography variant="body2">
+                Drag cards here
+              </Typography>
+            </Box>
+          )}
         </Stack>
       </Box>
     </Box>
@@ -484,20 +583,20 @@ export default function HoldFixBoard() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <Stack direction="row" spacing={3}>
-          <Box sx={{ flex: 1 }}>
+        <Stack direction="row" spacing={2} sx={{ height: "calc(100vh - 200px)" }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Column type="HOLD" tasks={holdItems} onUpdate={handleUpdate} onDelete={handleDelete} />
           </Box>
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Column type="FIX" tasks={fixItems} onUpdate={handleUpdate} onDelete={handleDelete} />
           </Box>
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Column type="RELEASE" tasks={releaseItems} onUpdate={handleUpdate} onDelete={handleDelete} />
           </Box>
         </Stack>
         <DragOverlay>
           {activeTask ? (
-            <HoldFixCard
+            <CompactCard
               task={activeTask}
               onUpdate={() => {}}
               onDelete={() => {}}

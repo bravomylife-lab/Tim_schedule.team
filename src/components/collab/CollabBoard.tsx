@@ -6,9 +6,13 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
+import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
+import SyncProblemRounded from "@mui/icons-material/SyncProblemRounded";
+import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
 import { DndContext, DragEndEvent, closestCorners, useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -47,20 +51,60 @@ const parseISOIfValid = (value?: string) => {
   return isValid(parsed) ? parsed : null;
 };
 
+// Publishing company detection and chip styling
+const detectPublishingCompany = (task: TimTask): { name: string; color: string } => {
+  const text = [
+    task.collabDetails?.publishingInfo || "",
+    task.title,
+    task.description || "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (text.includes("soundgraphics") || text.includes("사운드그래픽스")) {
+    return { name: "SG", color: "#1976d2" }; // blue
+  }
+  if (text.includes("faar") || text.includes("파")) {
+    return { name: "FAAR", color: "#f57c00" }; // orange
+  }
+  if (text.includes("cosmos") || text.includes("코스모스")) {
+    return { name: "COSMOS", color: "#7b1fa2" }; // purple
+  }
+  if (text.includes("gl") || text.includes("지엘")) {
+    return { name: "GL", color: "#388e3c" }; // green
+  }
+  if (text.includes("wavecandy") || text.includes("웨이브캔디")) {
+    return { name: "Wave", color: "#e91e63" }; // pink
+  }
+
+  // Unknown - extract first 2-3 chars from publishingInfo or use fallback
+  const pubInfo = task.collabDetails?.publishingInfo || "";
+  if (pubInfo) {
+    const shortName = pubInfo.substring(0, 3).toUpperCase();
+    return { name: shortName, color: "#9e9e9e" }; // gray
+  }
+
+  return { name: "—", color: "#9e9e9e" };
+};
+
 function CollabCard({
   task,
   onToggleMix,
   onMoveToPitching,
+  onDelete,
+  onDismissModified,
 }: {
   task: TimTask;
   onToggleMix: (id: string) => void;
   onMoveToPitching: (taskId: string, grade: PitchingGrade) => void;
+  onDelete: (id: string) => void;
+  onDismissModified: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
 
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const menuOpen = Boolean(anchorEl);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [gradeMenuAnchorEl, setGradeMenuAnchorEl] = useState<null | HTMLElement>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -70,32 +114,53 @@ function CollabCard({
 
   const details = task.collabDetails;
 
-  // D-Day 계산
+  // D-Day calculation
   const deadlineDate = parseISOIfValid(details?.deadline);
   const dDay = deadlineDate ? differenceInCalendarDays(deadlineDate, new Date()) : null;
 
-  // 긴급(3일 이내) 또는 지연(Overdue) 상태 확인 (완료된 건은 제외)
   const isUrgent = dDay !== null && dDay <= 3 && dDay >= 0 && details?.status !== "COMPLETED";
   const isOverdue = dDay !== null && dDay < 0 && details?.status !== "COMPLETED";
-
   const isCompleted = details?.status === "COMPLETED";
 
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+  const publishingCompany = detectPublishingCompany(task);
+
+  // Menu handlers
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
-    setAnchorEl(event.currentTarget);
+    setMenuAnchorEl(event.currentTarget);
   };
 
   const handleMenuClose = (event?: React.MouseEvent) => {
-    if (event) {
-      event.stopPropagation();
-    }
-    setAnchorEl(null);
+    if (event) event.stopPropagation();
+    setMenuAnchorEl(null);
+  };
+
+  const handleDelete = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    onDelete(task.id);
+    handleMenuClose();
+  };
+
+  const handleMoveToPitchingOpen = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    handleMenuClose();
+    setGradeMenuAnchorEl(event.currentTarget as HTMLElement);
+  };
+
+  const handleGradeMenuClose = (event?: React.MouseEvent) => {
+    if (event) event.stopPropagation();
+    setGradeMenuAnchorEl(null);
   };
 
   const handleGradeSelect = (event: React.MouseEvent, grade: PitchingGrade) => {
     event.stopPropagation();
     onMoveToPitching(task.id, grade);
-    handleMenuClose();
+    handleGradeMenuClose();
+  };
+
+  const handleDismissModified = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    onDismissModified(task.id);
   };
 
   return (
@@ -110,104 +175,183 @@ function CollabCard({
           borderRadius: 4,
           cursor: "grab",
           backgroundColor: "#fff",
-          border: isUrgent || isOverdue ? "2px solid #ef5350" : "1px solid transparent",
-          transition: "border 0.2s ease"
+          border: isUrgent || isOverdue ? "2px solid #ef5350" : "1px solid #e0e0e0",
+          transition: "border 0.2s ease",
         }}
       >
-        <Stack spacing={1}>
-          <Typography variant="subtitle1" fontWeight="600">
-            트랙명: {details?.trackName || task.title}
-          </Typography>
-          {details?.songName && details.songName !== details.trackName && (
-            <Typography variant="body2" color="text.secondary">
-              곡명: {details.songName}
-            </Typography>
-          )}
-          <Typography variant="body2" color="text.secondary">
-            프로듀서: {details?.trackProducer}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            탑라이너: {details?.topLiner}
-          </Typography>
-          <Chip
-            label={`타겟 아티스트: ${details?.targetArtist}`}
-            size="small"
-            color="primary"
-          />
-          <Typography variant="body2" color="text.secondary">
-            의뢰일: {details?.requestedDate
-              ? formatDate(details.requestedDate)
-              : formatDate(task.startDate)}
-          </Typography>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="body2" color="text.secondary">
-              데드라인: {formatDate(details?.deadline)}
-            </Typography>
-            {isCompleted ? (
+        <Stack spacing={1.5}>
+          {/* Title line: Publishing chip + Producer name + Menu */}
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack direction="row" alignItems="center" spacing={1}>
               <Chip
-                label={`믹스 모니터 ${details.mixMonitorSent ? "O" : "X"}`}
-                color={details.mixMonitorSent ? "success" : "default"}
+                label={publishingCompany.name}
                 size="small"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleMix(task.id);
+                sx={{
+                  backgroundColor: publishingCompany.color,
+                  color: "#fff",
+                  fontWeight: "bold",
+                  fontSize: "0.75rem",
+                  height: 22,
                 }}
-                sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
               />
-            ) : null}
-            {isUrgent && <Chip label={`D-${dDay}`} color="error" size="small" sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }} />}
-            {isOverdue && <Chip label="Overdue" color="error" size="small" sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }} />}
+              <Typography variant="subtitle1" fontWeight="700">
+                {details?.trackProducer || "TBD"}
+              </Typography>
+            </Stack>
+            <IconButton size="small" onClick={handleMenuOpen}>
+              <MoreVertRounded fontSize="small" />
+            </IconButton>
           </Stack>
-          {details?.notes && (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                fontStyle: 'italic',
-                mt: 1,
-                p: 1,
-                backgroundColor: '#f5f5f5',
-                borderRadius: 1,
-                whiteSpace: 'pre-wrap'
-              }}
-            >
-              메모: {details.notes}
+
+          {/* Subtitle: Track/song name */}
+          <Typography variant="body2" color="text.secondary" fontWeight="500">
+            Track: {details?.trackName || task.title}
+          </Typography>
+
+          {/* Compact info row: Topliner | Artist */}
+          <Typography variant="caption" color="text.secondary">
+            탑라이너: {details?.topLiner || "TBD"} | 아티스트: {details?.targetArtist || "TBD"}
+          </Typography>
+
+          {/* Dates with D-day */}
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Typography variant="caption" color="text.secondary">
+              의뢰: {formatDate(details?.requestedDate || task.startDate)}
             </Typography>
-          )}
-          {isCompleted && (
-            <Button
-              variant="outlined"
+            <Typography variant="caption" color="text.secondary">
+              |
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              마감: {formatDate(details?.deadline)}
+            </Typography>
+            {dDay !== null && dDay >= 0 && !isCompleted && (
+              <Chip
+                label={`D-${dDay}`}
+                color={isUrgent ? "error" : "default"}
+                size="small"
+                sx={{ height: 20, fontSize: "0.7rem", fontWeight: "bold" }}
+              />
+            )}
+            {isOverdue && (
+              <Chip
+                label="Overdue"
+                color="error"
+                size="small"
+                sx={{ height: 20, fontSize: "0.7rem", fontWeight: "bold" }}
+              />
+            )}
+          </Stack>
+
+          {/* Modified badge */}
+          {task.calendarModified && (
+            <Chip
+              label="Modified"
+              icon={<SyncProblemRounded fontSize="small" />}
               size="small"
-              fullWidth
-              onClick={handleMenuClick}
-              sx={{ mt: 1 }}
-            >
-              피칭아이디어로 이동
-            </Button>
+              color="warning"
+              onClick={handleDismissModified}
+              sx={{ width: "fit-content", cursor: "pointer" }}
+            />
+          )}
+
+          {/* Mix monitor chip (completed only) */}
+          {isCompleted && (
+            <Chip
+              label={`믹스 모니터 ${details?.mixMonitorSent ? "O" : "X"}`}
+              color={details?.mixMonitorSent ? "success" : "default"}
+              size="small"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleMix(task.id);
+              }}
+              sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer" }}
+            />
+          )}
+
+          {/* Memo section */}
+          {details?.notes && (
+            <>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: "600", mt: 0.5 }}
+              >
+                ─── 메모 ───
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  fontStyle: "italic",
+                  p: 1,
+                  backgroundColor: "#f5f5f5",
+                  borderRadius: 1,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {details.notes}
+              </Typography>
+            </>
+          )}
+
+          {/* Move to pitching button (completed only) */}
+          {isCompleted && (
+            <Chip
+              label="피칭아이디어로 이동"
+              icon={<ArrowForwardRounded fontSize="small" />}
+              onClick={handleMoveToPitchingOpen}
+              size="small"
+              variant="outlined"
+              color="primary"
+              sx={{ width: "fit-content", cursor: "pointer", fontWeight: "600" }}
+            />
           )}
         </Stack>
       </Paper>
+
+      {/* Main menu: Delete, Move to Pitching */}
       <Menu
-        anchorEl={anchorEl}
-        open={menuOpen}
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
         onClose={() => handleMenuClose()}
         onClick={(e) => e.stopPropagation()}
       >
-        <MenuItem onClick={(e) => handleGradeSelect(e, "S")}>
-          {gradeLabels.S}
+        <MenuItem onClick={handleDelete}>
+          <DeleteOutlineRounded fontSize="small" sx={{ mr: 1 }} />
+          삭제
         </MenuItem>
-        <MenuItem onClick={(e) => handleGradeSelect(e, "A")}>
-          {gradeLabels.A}
-        </MenuItem>
-        <MenuItem onClick={(e) => handleGradeSelect(e, "A_JPN")}>
-          {gradeLabels.A_JPN}
-        </MenuItem>
+        {isCompleted && (
+          <MenuItem onClick={handleMoveToPitchingOpen}>
+            <ArrowForwardRounded fontSize="small" sx={{ mr: 1 }} />
+            피칭으로 이동
+          </MenuItem>
+        )}
+      </Menu>
+
+      {/* Grade selection menu */}
+      <Menu
+        anchorEl={gradeMenuAnchorEl}
+        open={Boolean(gradeMenuAnchorEl)}
+        onClose={() => handleGradeMenuClose()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <MenuItem onClick={(e) => handleGradeSelect(e, "S")}>{gradeLabels.S}</MenuItem>
+        <MenuItem onClick={(e) => handleGradeSelect(e, "A")}>{gradeLabels.A}</MenuItem>
+        <MenuItem onClick={(e) => handleGradeSelect(e, "A_JPN")}>{gradeLabels.A_JPN}</MenuItem>
       </Menu>
     </>
   );
 }
 
-function CollabCardStatic({ task }: { task: TimTask }) {
+function CollabCardStatic({
+  task,
+  onDelete,
+  onDismissModified,
+}: {
+  task: TimTask;
+  onDelete: (id: string) => void;
+  onDismissModified: (id: string) => void;
+}) {
   const details = task.collabDetails;
   const deadlineDate = parseISOIfValid(details?.deadline);
   const dDay = deadlineDate ? differenceInCalendarDays(deadlineDate, new Date()) : null;
@@ -215,99 +359,185 @@ function CollabCardStatic({ task }: { task: TimTask }) {
   const isOverdue = dDay !== null && dDay < 0 && details?.status !== "COMPLETED";
   const isCompleted = details?.status === "COMPLETED";
 
+  const publishingCompany = detectPublishingCompany(task);
+
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = (event?: React.MouseEvent) => {
+    if (event) event.stopPropagation();
+    setMenuAnchorEl(null);
+  };
+
+  const handleDelete = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    onDelete(task.id);
+    handleMenuClose();
+  };
+
+  const handleDismissModified = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    onDismissModified(task.id);
+  };
+
   return (
-    <Paper
-      sx={{
-        p: 2,
-        borderRadius: 4,
-        backgroundColor: "#fff",
-        border: isUrgent || isOverdue ? "2px solid #ef5350" : "1px solid transparent",
-      }}
-    >
-      <Stack spacing={1}>
-        <Typography variant="subtitle1" fontWeight="600">
-          트랙명: {details?.trackName || task.title}
-        </Typography>
-        {details?.songName && details.songName !== details.trackName && (
-          <Typography variant="body2" color="text.secondary">
-            곡명: {details.songName}
+    <>
+      <Paper
+        sx={{
+          p: 2,
+          borderRadius: 4,
+          backgroundColor: "#fff",
+          border: isUrgent || isOverdue ? "2px solid #ef5350" : "1px solid #e0e0e0",
+        }}
+      >
+        <Stack spacing={1.5}>
+          {/* Title line */}
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Chip
+                label={publishingCompany.name}
+                size="small"
+                sx={{
+                  backgroundColor: publishingCompany.color,
+                  color: "#fff",
+                  fontWeight: "bold",
+                  fontSize: "0.75rem",
+                  height: 22,
+                }}
+              />
+              <Typography variant="subtitle1" fontWeight="700">
+                {details?.trackProducer || "TBD"}
+              </Typography>
+            </Stack>
+            <IconButton size="small" onClick={handleMenuOpen}>
+              <MoreVertRounded fontSize="small" />
+            </IconButton>
+          </Stack>
+
+          {/* Subtitle */}
+          <Typography variant="body2" color="text.secondary" fontWeight="500">
+            Track: {details?.trackName || task.title}
           </Typography>
-        )}
-        <Typography variant="body2" color="text.secondary">
-          프로듀서: {details?.trackProducer}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          탑라이너: {details?.topLiner}
-        </Typography>
-        <Chip label={`타겟 아티스트: ${details?.targetArtist}`} size="small" color="primary" />
-        <Typography variant="body2" color="text.secondary">
-          의뢰일: {details?.requestedDate
-            ? formatDate(details.requestedDate)
-            : formatDate(task.startDate)}
-        </Typography>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            데드라인: {formatDate(details?.deadline)}
+
+          {/* Info row */}
+          <Typography variant="caption" color="text.secondary">
+            탑라이너: {details?.topLiner || "TBD"} | 아티스트: {details?.targetArtist || "TBD"}
           </Typography>
-          {isCompleted ? (
+
+          {/* Dates */}
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Typography variant="caption" color="text.secondary">
+              의뢰: {formatDate(details?.requestedDate || task.startDate)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              |
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              마감: {formatDate(details?.deadline)}
+            </Typography>
+            {dDay !== null && dDay >= 0 && !isCompleted && (
+              <Chip
+                label={`D-${dDay}`}
+                color={isUrgent ? "error" : "default"}
+                size="small"
+                sx={{ height: 20, fontSize: "0.7rem", fontWeight: "bold" }}
+              />
+            )}
+            {isOverdue && (
+              <Chip
+                label="Overdue"
+                color="error"
+                size="small"
+                sx={{ height: 20, fontSize: "0.7rem", fontWeight: "bold" }}
+              />
+            )}
+          </Stack>
+
+          {/* Modified badge */}
+          {task.calendarModified && (
             <Chip
-              label={`믹스 모니터 ${details.mixMonitorSent ? "O" : "X"}`}
-              color={details.mixMonitorSent ? "success" : "default"}
+              label="Modified"
+              icon={<SyncProblemRounded fontSize="small" />}
               size="small"
-              sx={{ height: 20, fontSize: "0.75rem", fontWeight: "bold" }}
+              color="warning"
+              onClick={handleDismissModified}
+              sx={{ width: "fit-content", cursor: "pointer" }}
             />
-          ) : null}
-          {isUrgent ? (
+          )}
+
+          {/* Mix monitor */}
+          {isCompleted && (
             <Chip
-              label={`D-${dDay}`}
-              color="error"
+              label={`믹스 모니터 ${details?.mixMonitorSent ? "O" : "X"}`}
+              color={details?.mixMonitorSent ? "success" : "default"}
               size="small"
-              sx={{ height: 20, fontSize: "0.75rem", fontWeight: "bold" }}
+              sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
             />
-          ) : null}
-          {isOverdue ? (
+          )}
+
+          {/* Memo */}
+          {details?.notes && (
+            <>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: "600", mt: 0.5 }}
+              >
+                ─── 메모 ───
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  fontStyle: "italic",
+                  p: 1,
+                  backgroundColor: "#f5f5f5",
+                  borderRadius: 1,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {details.notes}
+              </Typography>
+            </>
+          )}
+
+          {/* Move button disabled */}
+          {isCompleted && (
             <Chip
-              label="Overdue"
-              color="error"
+              label="피칭아이디어로 이동"
+              icon={<ArrowForwardRounded fontSize="small" />}
+              disabled
               size="small"
-              sx={{ height: 20, fontSize: "0.75rem", fontWeight: "bold" }}
+              variant="outlined"
+              sx={{ width: "fit-content" }}
             />
-          ) : null}
+          )}
         </Stack>
-        {details?.notes && (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              fontStyle: 'italic',
-              mt: 1,
-              p: 1,
-              backgroundColor: '#f5f5f5',
-              borderRadius: 1,
-              whiteSpace: 'pre-wrap'
-            }}
-          >
-            메모: {details.notes}
-          </Typography>
-        )}
-        {isCompleted && (
-          <Button
-            variant="outlined"
-            size="small"
-            fullWidth
-            disabled
-            sx={{ mt: 1 }}
-          >
-            피칭아이디어로 이동
-          </Button>
-        )}
-      </Stack>
-    </Paper>
+      </Paper>
+
+      {/* Menu */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={() => handleMenuClose()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <MenuItem onClick={handleDelete}>
+          <DeleteOutlineRounded fontSize="small" sx={{ mr: 1 }} />
+          삭제
+        </MenuItem>
+      </Menu>
+    </>
   );
 }
 
 export default function CollabBoard() {
-  const { tasks: allTasks, moveToPitching } = useTaskContext();
+  const { tasks: allTasks, moveToPitching, deleteTask, dismissCalendarModified, updateTask } =
+    useTaskContext();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -392,6 +622,14 @@ export default function CollabBoard() {
     moveToPitching(taskId, grade);
   };
 
+  const handleDelete = (taskId: string) => {
+    deleteTask(taskId);
+  };
+
+  const handleDismissModified = (taskId: string) => {
+    dismissCalendarModified(taskId);
+  };
+
   return (
     <Box>
       <SectionHeader
@@ -409,6 +647,8 @@ export default function CollabBoard() {
                 tasks={groupedTasks[column.id]}
                 onToggleMix={handleToggleMix}
                 onMoveToPitching={handleMoveToPitching}
+                onDelete={handleDelete}
+                onDismissModified={handleDismissModified}
               />
             ))}
           </Box>
@@ -422,7 +662,12 @@ export default function CollabBoard() {
               </Typography>
               <Stack spacing={2}>
                 {groupedTasks[column.id].map((task) => (
-                  <CollabCardStatic key={task.id} task={task} />
+                  <CollabCardStatic
+                    key={task.id}
+                    task={task}
+                    onDelete={handleDelete}
+                    onDismissModified={handleDismissModified}
+                  />
                 ))}
               </Stack>
             </Paper>
@@ -439,12 +684,16 @@ function CollabColumn({
   tasks,
   onToggleMix,
   onMoveToPitching,
+  onDelete,
+  onDismissModified,
 }: {
   columnId: CollabStatus;
   title: string;
   tasks: TimTask[];
   onToggleMix: (id: string) => void;
   onMoveToPitching: (taskId: string, grade: PitchingGrade) => void;
+  onDelete: (id: string) => void;
+  onDismissModified: (id: string) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: columnId });
 
@@ -461,6 +710,8 @@ function CollabColumn({
               task={task}
               onToggleMix={onToggleMix}
               onMoveToPitching={onMoveToPitching}
+              onDelete={onDelete}
+              onDismissModified={onDismissModified}
             />
           ))}
         </Stack>

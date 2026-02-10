@@ -301,6 +301,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       requestedDate: aiDetails?.requestedDate || startDate,
       status: "REQUESTED" as const,
       notes: aiDetails?.notes || "",
+      publishingInfo: aiDetails?.publishingInfo || aiDetails?.publishingCompany || "",
     };
   }, []);
 
@@ -376,6 +377,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
           const existingIdx = updatedTasks.findIndex((t) => t.googleEventId === gEvent.id);
           const gDate = gEvent.start?.dateTime || gEvent.start?.date;
+          const gEndDate = gEvent.end?.dateTime || gEvent.end?.date;
           if (!gDate) return;
 
           const classification = classificationResults.find((c) => c.id === gEvent.id);
@@ -402,6 +404,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
               title: gTitle,
               description: gDesc,
               startDate: gDate,
+              endDate: gEndDate || undefined,
               category,
               subCategory: classification?.subCategory as TimTask["subCategory"],
               lastSyncedAt: new Date().toISOString(),
@@ -424,6 +427,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
               title: gTitle,
               description: classification?.description ?? gEvent.description ?? "",
               startDate: gDate,
+              endDate: gEndDate || undefined,
               category,
               googleEventId: gEvent.id,
               subCategory: classification?.subCategory as TimTask["subCategory"],

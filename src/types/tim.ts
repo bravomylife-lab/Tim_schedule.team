@@ -25,6 +25,7 @@ export interface CollabDetails {
   status: CollabStatus;
   mixMonitorSent?: boolean;
   notes?: string;
+  publishingInfo?: string;
 }
 
 export interface HoldFixDetails {
