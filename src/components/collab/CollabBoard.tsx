@@ -194,43 +194,43 @@ function DetailDialog({ open, task, onClose, onSave, onDelete, onMoveToPitching 
         <DialogContent dividers>
           <Stack spacing={2.5}>
             <TextField
-              label="Track Name"
+              label="트랙명"
               value={trackName}
               onChange={(e) => setTrackName(e.target.value)}
               fullWidth
             />
             <TextField
-              label="Song Name"
+              label="곡명"
               value={songName}
               onChange={(e) => setSongName(e.target.value)}
               fullWidth
             />
             <TextField
-              label="Track Producer"
+              label="트랙 프로듀서"
               value={trackProducer}
               onChange={(e) => setTrackProducer(e.target.value)}
               fullWidth
             />
             <TextField
-              label="Top Liner"
+              label="탑라이너"
               value={topLiner}
               onChange={(e) => setTopLiner(e.target.value)}
               fullWidth
             />
             <TextField
-              label="Target Artist"
+              label="타겟 아티스트"
               value={targetArtist}
               onChange={(e) => setTargetArtist(e.target.value)}
               fullWidth
             />
             <TextField
-              label="Publishing Info"
+              label="퍼블리싱 정보"
               value={publishingInfo}
               onChange={(e) => setPublishingInfo(e.target.value)}
               fullWidth
             />
             <TextField
-              label="Deadline"
+              label="마감일"
               type="date"
               value={deadline ? deadline.split("T")[0] : ""}
               onChange={(e) => setDeadline(e.target.value ? new Date(e.target.value).toISOString() : "")}
@@ -238,7 +238,7 @@ function DetailDialog({ open, task, onClose, onSave, onDelete, onMoveToPitching 
               InputLabelProps={{ shrink: true }}
             />
             <TextField
-              label="Requested Date"
+              label="의뢰일"
               type="date"
               value={requestedDate ? requestedDate.split("T")[0] : ""}
               onChange={(e) => setRequestedDate(e.target.value ? new Date(e.target.value).toISOString() : "")}
@@ -269,7 +269,7 @@ function DetailDialog({ open, task, onClose, onSave, onDelete, onMoveToPitching 
               />
             )}
             <TextField
-              label="Notes"
+              label="메모"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               fullWidth
@@ -358,7 +358,7 @@ function CompactCollabCard({
       {...listeners}
       onClick={onClick}
       sx={{
-        p: 1.5,
+        p: 2,
         borderRadius: 2,
         cursor: "pointer",
         backgroundColor: "#fff",
@@ -366,8 +366,7 @@ function CompactCollabCard({
         borderLeft: isUrgent || isOverdue ? "4px solid #ef5350" : "1px solid #e0e0e0",
         transition: "all 0.2s ease",
         position: "relative",
-        minHeight: "50px",
-        maxHeight: "60px",
+        minHeight: "60px",
         "&:hover": {
           boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
         },
@@ -384,15 +383,15 @@ function CompactCollabCard({
                 backgroundColor: publishingCompany.color,
                 color: "#fff",
                 fontWeight: "bold",
-                fontSize: "0.7rem",
-                height: 18,
+                fontSize: "0.8rem",
+                height: 22,
                 minWidth: 40,
               }}
             />
-            <Typography variant="body2" fontWeight="600" noWrap sx={{ maxWidth: 120 }}>
+            <Typography variant="body1" fontWeight="700" noWrap>
               {details?.trackProducer || "TBD"}
             </Typography>
-            <Typography variant="body2" color="text.secondary" noWrap sx={{ flex: 1 }}>
+            <Typography variant="body1" color="text.secondary" noWrap sx={{ flex: 1 }}>
               — {details?.trackName || task.title}
             </Typography>
             {dDay !== null && dDay >= 0 && details?.status !== "COMPLETED" && (
@@ -400,7 +399,7 @@ function CompactCollabCard({
                 label={`D-${dDay}`}
                 color={isUrgent ? "error" : "default"}
                 size="small"
-                sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold" }}
+                sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
               />
             )}
             {isOverdue && (
@@ -408,7 +407,7 @@ function CompactCollabCard({
                 label="Overdue"
                 color="error"
                 size="small"
-                sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold" }}
+                sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
               />
             )}
           </Stack>
@@ -433,7 +432,7 @@ function CompactCollabCard({
         </Stack>
 
         {/* Line 2: Caption: Topliner | Target Artist | 의뢰일 */}
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
           {details?.topLiner || "TBD"} | {details?.targetArtist || "TBD"} | 의뢰일:{" "}
           {formatDate(details?.requestedDate || task.startDate)}
         </Typography>
@@ -474,14 +473,13 @@ function CompactCollabCardStatic({
     <Paper
       onClick={onClick}
       sx={{
-        p: 1.5,
+        p: 2,
         borderRadius: 2,
         cursor: "pointer",
         backgroundColor: "#fff",
         border: "1px solid #e0e0e0",
         borderLeft: isUrgent || isOverdue ? "4px solid #ef5350" : "1px solid #e0e0e0",
-        minHeight: "50px",
-        maxHeight: "60px",
+        minHeight: "60px",
         "&:hover": {
           boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
         },
@@ -497,15 +495,15 @@ function CompactCollabCardStatic({
                 backgroundColor: publishingCompany.color,
                 color: "#fff",
                 fontWeight: "bold",
-                fontSize: "0.7rem",
-                height: 18,
+                fontSize: "0.8rem",
+                height: 22,
                 minWidth: 40,
               }}
             />
-            <Typography variant="body2" fontWeight="600" noWrap sx={{ maxWidth: 120 }}>
+            <Typography variant="body1" fontWeight="700" noWrap>
               {details?.trackProducer || "TBD"}
             </Typography>
-            <Typography variant="body2" color="text.secondary" noWrap sx={{ flex: 1 }}>
+            <Typography variant="body1" color="text.secondary" noWrap sx={{ flex: 1 }}>
               — {details?.trackName || task.title}
             </Typography>
             {dDay !== null && dDay >= 0 && details?.status !== "COMPLETED" && (
@@ -513,7 +511,7 @@ function CompactCollabCardStatic({
                 label={`D-${dDay}`}
                 color={isUrgent ? "error" : "default"}
                 size="small"
-                sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold" }}
+                sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
               />
             )}
             {isOverdue && (
@@ -521,7 +519,7 @@ function CompactCollabCardStatic({
                 label="Overdue"
                 color="error"
                 size="small"
-                sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold" }}
+                sx={{ height: 22, fontSize: "0.75rem", fontWeight: "bold" }}
               />
             )}
           </Stack>
@@ -544,7 +542,7 @@ function CompactCollabCardStatic({
             </IconButton>
           </Stack>
         </Stack>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
           {details?.topLiner || "TBD"} | {details?.targetArtist || "TBD"} | 의뢰일:{" "}
           {formatDate(details?.requestedDate || task.startDate)}
         </Typography>
@@ -702,11 +700,11 @@ export default function CollabBoard() {
     <Box>
       <SectionHeader
         title="협업"
-        subtitle="협업 의뢰부터 완료까지 단계별 진행 상황을 확인합니다"
+        subtitle="협업 의뢰부터 완료까지 단계별 진행 상황을 확인하고 팀과 함께 관리합니다"
       />
       {mounted ? (
         <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 3 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
             {columns.map((column) => (
               <CollabColumn
                 key={column.id}
@@ -722,7 +720,7 @@ export default function CollabBoard() {
           </Box>
         </DndContext>
       ) : (
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 3 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
           {columns.map((column) => (
             <Paper key={column.id} sx={{ p: 2, backgroundColor: "#f8f9ff" }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
@@ -733,7 +731,7 @@ export default function CollabBoard() {
                   <AddRounded />
                 </IconButton>
               </Stack>
-              <Stack spacing={1.5}>
+              <Stack spacing={2}>
                 {groupedTasks[column.id].map((task) => (
                   <CompactCollabCardStatic
                     key={task.id}
@@ -788,7 +786,7 @@ function CollabColumn({
         backgroundColor: "#f8f9ff",
         display: "flex",
         flexDirection: "column",
-        maxHeight: "calc(100vh - 280px)",
+        maxHeight: "calc(100vh - 240px)",
       }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
@@ -827,7 +825,7 @@ function CollabColumn({
         }}
       >
         <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-          <Stack spacing={1.5}>
+          <Stack spacing={2}>
             {tasks.map((task) => (
               <CompactCollabCard
                 key={task.id}

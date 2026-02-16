@@ -61,6 +61,7 @@ export interface StockDetails {
   relatedNewsTitle?: string;
   relatedNewsUrl?: string;
   note: string;
+  eventColor?: string;
 }
 
 export interface TimTask {

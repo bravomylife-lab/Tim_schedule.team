@@ -197,20 +197,20 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
           display: "flex",
           alignItems: "center",
           gap: 1,
-          minHeight: 48,
+          minHeight: 56,
           cursor: "pointer",
           "&:hover": {
             bgcolor: expanded ? undefined : "rgba(0, 0, 0, 0.02)",
           },
         }}
       >
-        <Chip label={type} color={chipColor} size="small" sx={{ minWidth: 70 }} />
+        <Chip label={type} color={chipColor} size="small" sx={{ minWidth: 80, fontWeight: 700 }} />
 
         <Box sx={{ flex: 1, overflow: "hidden" }}>
-          <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>
+          <Typography variant="body1" sx={{ fontWeight: 600 }} noWrap>
             {details.demoName || "Untitled Demo"}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }} noWrap>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", fontSize: "0.85rem" }} noWrap>
             {formatWritersCompact()}
             {details.targetArtist && ` → ${details.targetArtist}`}
           </Typography>
@@ -244,7 +244,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
         <Box sx={{ px: 2, pb: 2, pt: 1, borderTop: "1px solid rgba(0, 0, 0, 0.08)" }}>
           <Stack spacing={1.5}>
             <TextField
-              label="Demo Name"
+              label="데모명"
               size="small"
               fullWidth
               value={details.demoName || ""}
@@ -253,7 +253,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
             />
 
             <TextField
-              label="Target Artist"
+              label="타겟 아티스트"
               size="small"
               fullWidth
               value={details.targetArtist || ""}
@@ -262,7 +262,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
             />
 
             <TextField
-              label="Writers (comma-separated)"
+              label="작곡가 (쉼표 구분)"
               size="small"
               fullWidth
               value={details.writers?.join(", ") || ""}
@@ -271,7 +271,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
             />
 
             <TextField
-              label="Splits (e.g., John 50%, Jane 50%)"
+              label="지분 (예: John 50%, Jane 50%)"
               size="small"
               fullWidth
               value={details.splits ? formatSplits(details.splits) : ""}
@@ -291,7 +291,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
             )}
 
             <TextField
-              label="Publishing Info"
+              label="퍼블리싱 정보"
               size="small"
               fullWidth
               value={details.publishingInfo || ""}
@@ -300,7 +300,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
             />
 
             <TextField
-              label="Email"
+              label="이메일"
               size="small"
               fullWidth
               type="email"
@@ -310,7 +310,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
             />
 
             <TextField
-              label="Notes / 메모"
+              label="메모"
               size="small"
               fullWidth
               multiline
@@ -324,7 +324,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
               <>
                 <Box onClick={(e) => e.stopPropagation()}>
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                    Hold Requested Date
+                    홀드 요청일
                   </Typography>
                   <DateSelect
                     value={details.holdRequestedDate}
@@ -333,7 +333,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
                 </Box>
 
                 <TextField
-                  label="Hold Period"
+                  label="홀드 기간"
                   size="small"
                   fullWidth
                   value={details.holdPeriod || ""}
@@ -347,7 +347,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
               <>
                 <Box onClick={(e) => e.stopPropagation()}>
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                    Fix Date
+                    픽스 날짜
                   </Typography>
                   <DateSelect
                     value={details.fixDate}
@@ -357,7 +357,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
 
                 <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
                   <TextField
-                    label="Production Fee"
+                    label="프로덕션 비용"
                     size="small"
                     type="number"
                     value={details.productionFee || ""}
@@ -384,7 +384,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
               <>
                 <Box onClick={(e) => e.stopPropagation()}>
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                    Release Date
+                    발매일
                   </Typography>
                   <DateSelect
                     value={details.releaseDate}
@@ -394,7 +394,7 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
 
                 <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
                   <TextField
-                    label="Production Fee"
+                    label="프로덕션 비용"
                     size="small"
                     type="number"
                     value={details.productionFee || ""}
@@ -459,7 +459,7 @@ function Column({ type, tasks, onUpdate, onDelete }: ColumnProps) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5, px: 1 }}>
-        <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: 600 }}>
+        <Typography variant="h6" sx={{ fontSize: "1.1rem", fontWeight: 600 }}>
           {title}
         </Typography>
         <Chip label={count} size="small" color={type === "FIX" ? "warning" : type === "RELEASE" ? "primary" : "default"} />
@@ -473,7 +473,7 @@ function Column({ type, tasks, onUpdate, onDelete }: ColumnProps) {
           borderRadius: 1,
           maxHeight: "calc(100vh - 250px)",
           overflowY: "auto",
-          minHeight: 200,
+          minHeight: 300,
           "&::-webkit-scrollbar": {
             width: 8,
           },
@@ -507,7 +507,7 @@ function Column({ type, tasks, onUpdate, onDelete }: ColumnProps) {
               }}
             >
               <Typography variant="body2">
-                Drag cards here
+                여기에 카드를 드래그하세요
               </Typography>
             </Box>
           )}
@@ -575,7 +575,7 @@ export default function HoldFixBoard() {
     <Box>
       <SectionHeader
         title="Hold / Fix"
-        subtitle="홀드 및 픽스된 데모 정보와 지분/퍼블리싱 정보를 빠르게 확인합니다"
+        subtitle="홀드 및 픽스된 데모의 지분/퍼블리싱 정보를 관리합니다"
       />
       <DndContext
         sensors={sensors}
@@ -583,7 +583,7 @@ export default function HoldFixBoard() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <Stack direction="row" spacing={2} sx={{ height: "calc(100vh - 200px)" }}>
+        <Stack direction="row" spacing={2} sx={{ height: "calc(100vh - 180px)" }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Column type="HOLD" tasks={holdItems} onUpdate={handleUpdate} onDelete={handleDelete} />
           </Box>

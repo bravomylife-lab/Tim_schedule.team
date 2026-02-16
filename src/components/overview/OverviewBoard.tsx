@@ -164,6 +164,20 @@ export default function OverviewBoard() {
     setMounted(true);
   }, []);
 
+  // Exclude stock/finance/personal content from Overview
+  const isStockContent = (task: TimTask) => {
+    const text = `${task.title} ${task.description || ""}`.toLowerCase();
+    const stockKeywords = [
+      "fed", "연준", "fomc", "cpi", "ppi", "gdp", "금리", "인플레이션",
+      "주식", "증권", "주가", "실적", "매출", "배당", "ipo", "earnings",
+      "ticker", "nasdaq", "kospi", "kosdaq", "etf", "펀드", "차트",
+      "에어쇼", "airshow", "고용보고서", "non-farm", "payrolls",
+      "리밸런싱", "포트폴리오", "매매", "맥점", "복기", "수익률",
+      "tsmc", "엔비디아", "msci", "설 연휴", "설연휴", "휴장",
+    ];
+    return stockKeywords.some(kw => text.includes(kw));
+  };
+
   // Sort helper: starred first, today next, then by date
   const sortTasks = (taskList: TimTask[]) => {
     return [...taskList].sort((a, b) => {
@@ -189,13 +203,16 @@ export default function OverviewBoard() {
       (task) => task.category === "WEEKLY" || task.category === "URGENT"
     );
 
-    const filtered = musicTasks.filter((task) =>
-      task.startDate
-        ? isPast(parseISO(task.startDate)) ||
-          isToday(parseISO(task.startDate)) ||
-          isTomorrow(parseISO(task.startDate))
-        : false
-    );
+    const filtered = musicTasks
+      .filter((task) => !isStockContent(task))
+      .filter((task) => !task.stockDetails)
+      .filter((task) =>
+        task.startDate
+          ? isPast(parseISO(task.startDate)) ||
+            isToday(parseISO(task.startDate)) ||
+            isTomorrow(parseISO(task.startDate))
+          : false
+      );
     return sortTasks(filtered);
   }, [tasks]);
 
@@ -207,19 +224,22 @@ export default function OverviewBoard() {
       (task) => task.category === "WEEKLY" || task.category === "URGENT"
     );
 
-    const filtered = musicTasks.filter((task) => {
-      if (!task.startDate) {
-        return false;
-      }
+    const filtered = musicTasks
+      .filter((task) => !isStockContent(task))
+      .filter((task) => !task.stockDetails)
+      .filter((task) => {
+        if (!task.startDate) {
+          return false;
+        }
 
-      const date = parseISO(task.startDate);
-      const inWindow = isWithinInterval(date, {
-        start: startOfDay(today),
-        end: weekEnd,
+        const date = parseISO(task.startDate);
+        const inWindow = isWithinInterval(date, {
+          start: startOfDay(today),
+          end: weekEnd,
+        });
+        const isUrgent = isPast(date) || isToday(date) || isTomorrow(date);
+        return inWindow && !isUrgent;
       });
-      const isUrgent = isPast(date) || isToday(date) || isTomorrow(date);
-      return inWindow && !isUrgent;
-    });
     return sortTasks(filtered);
   }, [tasks]);
 
