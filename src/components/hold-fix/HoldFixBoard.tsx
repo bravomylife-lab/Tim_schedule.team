@@ -12,10 +12,13 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import IconButton from "@mui/material/IconButton";
-import Collapse from "@mui/material/Collapse";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Button from "@mui/material/Button";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import CloseIcon from "@mui/icons-material/Close";
 import SectionHeader from "@/components/SectionHeader";
 import { useTaskContext } from "@/contexts/TaskContext";
 import { TimTask, HoldFixType, HoldFixDetails, Currency } from "@/types/tim";
@@ -30,7 +33,8 @@ import {
   closestCorners,
 } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, DraggableAttributes } from "@dnd-kit/core";
+import { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 
 interface DateSelectProps {
   value?: string;
@@ -112,15 +116,263 @@ function DateSelect({ value, onChange }: DateSelectProps) {
   );
 }
 
-interface CompactCardProps {
-  task: TimTask;
-  onUpdate: (updates: Partial<HoldFixDetails>) => void;
+interface DetailDialogProps {
+  open: boolean;
+  task: TimTask | null;
+  onClose: () => void;
+  onSave: (updates: Partial<HoldFixDetails>) => void;
   onDelete: () => void;
-  isDragging?: boolean;
 }
 
-function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps) {
-  const [expanded, setExpanded] = useState(false);
+function DetailDialog({ open, task, onClose, onSave, onDelete }: DetailDialogProps) {
+  if (!task || !task.holdFixDetails) return null;
+
+  const [localDetails, setLocalDetails] = useState<HoldFixDetails>(task.holdFixDetails);
+  const type = localDetails.type;
+
+  const handleWritersChange = (value: string) => {
+    const writers = value.split(",").map((w) => w.trim()).filter((w) => w);
+    setLocalDetails({ ...localDetails, writers });
+  };
+
+  const handleSave = () => {
+    onSave(localDetails);
+    onClose();
+  };
+
+  const handleDelete = () => {
+    onDelete();
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h6">
+            {type} - {localDetails.demoName || "Untitled Demo"}
+          </Typography>
+          <IconButton size="small" onClick={onClose}>
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2.5}>
+          <TextField
+            label="데모명"
+            size="small"
+            fullWidth
+            value={localDetails.demoName || ""}
+            onChange={(e) => setLocalDetails({ ...localDetails, demoName: e.target.value })}
+          />
+
+          <TextField
+            label="타겟 아티스트"
+            size="small"
+            fullWidth
+            value={localDetails.targetArtist || ""}
+            onChange={(e) => setLocalDetails({ ...localDetails, targetArtist: e.target.value })}
+          />
+
+          <TextField
+            label="작곡가 (쉼표 구분)"
+            size="small"
+            fullWidth
+            value={localDetails.writers?.join(", ") || ""}
+            onChange={(e) => handleWritersChange(e.target.value)}
+          />
+
+          <TextField
+            label="지분"
+            size="small"
+            fullWidth
+            multiline
+            rows={2}
+            value={localDetails.splitsNote || ""}
+            onChange={(e) => setLocalDetails({ ...localDetails, splitsNote: e.target.value })}
+            placeholder="자유롭게 지분 관계를 작성하세요"
+          />
+
+          {localDetails.writers && localDetails.writers.length > 0 && (
+            <Box sx={{ p: 1.5, bgcolor: "rgba(0, 0, 0, 0.03)", borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                Writers & Splits
+              </Typography>
+              <Typography variant="body2">
+                {localDetails.writers.join(", ")}
+              </Typography>
+            </Box>
+          )}
+
+          <TextField
+            label="퍼블리싱 정보"
+            size="small"
+            fullWidth
+            value={localDetails.publishingInfo || ""}
+            onChange={(e) => setLocalDetails({ ...localDetails, publishingInfo: e.target.value })}
+          />
+
+          <TextField
+            label="이메일"
+            size="small"
+            fullWidth
+            type="email"
+            value={localDetails.email || ""}
+            onChange={(e) => setLocalDetails({ ...localDetails, email: e.target.value })}
+          />
+
+          <TextField
+            label="메모"
+            size="small"
+            fullWidth
+            multiline
+            rows={3}
+            value={localDetails.notes || ""}
+            onChange={(e) => setLocalDetails({ ...localDetails, notes: e.target.value })}
+          />
+
+          {type === "HOLD" && (
+            <>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+                  홀드 요청일
+                </Typography>
+                <DateSelect
+                  value={localDetails.holdRequestedDate}
+                  onChange={(date) => setLocalDetails({ ...localDetails, holdRequestedDate: date })}
+                />
+              </Box>
+
+              <TextField
+                label="홀드 기간"
+                size="small"
+                fullWidth
+                value={localDetails.holdPeriod || ""}
+                onChange={(e) => setLocalDetails({ ...localDetails, holdPeriod: e.target.value })}
+              />
+            </>
+          )}
+
+          {type === "FIX" && (
+            <>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+                  픽스 날짜
+                </Typography>
+                <DateSelect
+                  value={localDetails.fixDate}
+                  onChange={(date) => setLocalDetails({ ...localDetails, fixDate: date })}
+                />
+              </Box>
+
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  label="프로덕션 비용"
+                  size="small"
+                  type="number"
+                  value={localDetails.productionFee || ""}
+                  onChange={(e) => setLocalDetails({ ...localDetails, productionFee: parseFloat(e.target.value) || 0 })}
+                  sx={{ flex: 1 }}
+                />
+                <FormControl size="small" sx={{ minWidth: 90 }}>
+                  <InputLabel>Currency</InputLabel>
+                  <Select
+                    value={localDetails.currency || "KRW"}
+                    label="Currency"
+                    onChange={(e) => setLocalDetails({ ...localDetails, currency: e.target.value as Currency })}
+                  >
+                    <MenuItem value="KRW">KRW</MenuItem>
+                    <MenuItem value="USD">USD</MenuItem>
+                    <MenuItem value="EUR">EUR</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+
+              <TextField
+                label="Mechanical 비용"
+                size="small"
+                type="number"
+                fullWidth
+                value={localDetails.mechanicalFee || ""}
+                onChange={(e) => setLocalDetails({ ...localDetails, mechanicalFee: parseFloat(e.target.value) || 0 })}
+              />
+            </>
+          )}
+
+          {type === "RELEASE" && (
+            <>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+                  발매일
+                </Typography>
+                <DateSelect
+                  value={localDetails.releaseDate}
+                  onChange={(date) => setLocalDetails({ ...localDetails, releaseDate: date })}
+                />
+              </Box>
+
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  label="프로덕션 비용"
+                  size="small"
+                  type="number"
+                  value={localDetails.productionFee || ""}
+                  onChange={(e) => setLocalDetails({ ...localDetails, productionFee: parseFloat(e.target.value) || 0 })}
+                  sx={{ flex: 1 }}
+                />
+                <FormControl size="small" sx={{ minWidth: 90 }}>
+                  <InputLabel>Currency</InputLabel>
+                  <Select
+                    value={localDetails.currency || "KRW"}
+                    label="Currency"
+                    onChange={(e) => setLocalDetails({ ...localDetails, currency: e.target.value as Currency })}
+                  >
+                    <MenuItem value="KRW">KRW</MenuItem>
+                    <MenuItem value="USD">USD</MenuItem>
+                    <MenuItem value="EUR">EUR</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+
+              <TextField
+                label="Mechanical 비용"
+                size="small"
+                type="number"
+                fullWidth
+                value={localDetails.mechanicalFee || ""}
+                onChange={(e) => setLocalDetails({ ...localDetails, mechanicalFee: parseFloat(e.target.value) || 0 })}
+              />
+            </>
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleDelete} color="error">
+          삭제
+        </Button>
+        <Box sx={{ flex: 1 }} />
+        <Button onClick={onClose}>
+          취소
+        </Button>
+        <Button onClick={handleSave} variant="contained">
+          저장
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+interface CompactCardProps {
+  task: TimTask;
+  onCardClick: () => void;
+  onDelete: () => void;
+  isDragging?: boolean;
+  dragAttributes?: DraggableAttributes;
+  dragListeners?: SyntheticListenerMap;
+}
+
+function CompactCard({ task, onCardClick, onDelete, isDragging, dragAttributes, dragListeners }: CompactCardProps) {
   const details = task.holdFixDetails!;
   const type = details.type;
 
@@ -133,310 +385,122 @@ function CompactCard({ task, onUpdate, onDelete, isDragging }: CompactCardProps)
 
   const chipColor = type === "FIX" ? "warning" : type === "RELEASE" ? "primary" : "default";
 
-  const handleWritersChange = (value: string) => {
-    const writers = value.split(",").map((w) => w.trim()).filter((w) => w);
-    onUpdate({ writers });
-  };
-
-  const handleSplitsChange = (value: string) => {
-    const splits: Record<string, number> = {};
-    value.split(",").forEach((part) => {
-      const match = part.trim().match(/^(.+?)\s+(\d+(?:\.\d+)?)%?$/);
-      if (match) {
-        splits[match[1].trim()] = parseFloat(match[2]);
-      }
-    });
-    onUpdate({ splits });
-  };
-
-  const formatSplits = (splits: Record<string, number>) => {
-    return Object.entries(splits)
-      .map(([name, value]) => `${name} ${value}%`)
-      .join(", ");
-  };
-
   const formatWritersCompact = () => {
     if (!details.writers || details.writers.length === 0) return "—";
     if (details.writers.length <= 2) return details.writers.join(", ");
     return `${details.writers[0]}, ${details.writers[1]} +${details.writers.length - 2}`;
   };
 
-  const formatWritersWithSplits = () => {
-    if (!details.writers || details.writers.length === 0) return null;
-
-    if (details.splits && Object.keys(details.splits).length > 0) {
-      return details.writers.map(writer => {
-        const split = details.splits[writer];
-        return split !== undefined ? `${writer} - ${split.toFixed(2)}%` : writer;
-      }).join(", ");
-    }
-
-    return details.writers.join(", ");
+  const formatFee = () => {
+    if (!details.productionFee) return null;
+    const currency = details.currency || "KRW";
+    const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₩";
+    return `${symbol}${details.productionFee.toLocaleString()}`;
   };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\. /g, ".").replace(/\.$/, "");
+  };
+
+  const displayDate = type === "HOLD" ? formatDate(details.holdRequestedDate)
+    : type === "FIX" ? formatDate(details.fixDate)
+    : formatDate(details.releaseDate);
 
   return (
     <Card
       sx={{
         border: `1px solid ${borderColor}`,
         opacity: isDragging ? 0.5 : 1,
-        cursor: isDragging ? "grabbing" : "grab",
         transition: "all 0.2s ease",
         "&:hover": {
-          boxShadow: expanded ? undefined : 2,
+          boxShadow: 2,
         },
       }}
     >
       <Box
-        onClick={(e) => {
-          if ((e.target as HTMLElement).closest("button, input, textarea")) return;
-          setExpanded(!expanded);
-        }}
+        {...(dragAttributes || {})}
+        {...(dragListeners || {})}
         sx={{
           px: 1.5,
           py: 1,
           display: "flex",
-          alignItems: "center",
-          gap: 1,
-          minHeight: 56,
-          cursor: "pointer",
-          "&:hover": {
-            bgcolor: expanded ? undefined : "rgba(0, 0, 0, 0.02)",
-          },
+          flexDirection: "column",
+          gap: 0.5,
+          minHeight: 60,
+          cursor: isDragging ? "grabbing" : "grab",
         }}
       >
-        <Chip label={type} color={chipColor} size="small" sx={{ minWidth: 80, fontWeight: 700 }} />
-
-        <Box sx={{ flex: 1, overflow: "hidden" }}>
-          <Typography variant="body1" sx={{ fontWeight: 600 }} noWrap>
+        <Stack direction="row" alignItems="center" gap={1}>
+          <Chip label={type} color={chipColor} size="small" sx={{ minWidth: 70, fontWeight: 700, fontSize: "0.7rem" }} />
+          <Typography variant="body2" sx={{ fontWeight: 700, flex: 1 }} noWrap onClick={onCardClick}>
             {details.demoName || "Untitled Demo"}
+            {details.targetArtist && ` (${details.targetArtist})`}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", fontSize: "0.85rem" }} noWrap>
-            {formatWritersCompact()}
-            {details.targetArtist && ` → ${details.targetArtist}`}
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            color="error"
+            sx={{ flexShrink: 0 }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontSize: "0.75rem", cursor: "pointer" }}
+          noWrap
+          onClick={onCardClick}
+        >
+          작곡가: {formatWritersCompact()}
+          {formatFee() && ` • 곡비: ${formatFee()}`}
+        </Typography>
+
+        {(details.publishingInfo || displayDate) && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontSize: "0.75rem", cursor: "pointer" }}
+            noWrap
+            onClick={onCardClick}
+          >
+            {details.publishingInfo && `퍼블리싱: ${details.publishingInfo}`}
+            {details.publishingInfo && displayDate && " • "}
+            {displayDate && displayDate}
           </Typography>
-        </Box>
-
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpanded(!expanded);
-          }}
-          sx={{ flexShrink: 0 }}
-        >
-          {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-        </IconButton>
-
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          color="error"
-          sx={{ flexShrink: 0 }}
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+        )}
       </Box>
-
-      <Collapse in={expanded} timeout="auto">
-        <Box sx={{ px: 2, pb: 2, pt: 1, borderTop: "1px solid rgba(0, 0, 0, 0.08)" }}>
-          <Stack spacing={1.5}>
-            <TextField
-              label="데모명"
-              size="small"
-              fullWidth
-              value={details.demoName || ""}
-              onChange={(e) => onUpdate({ demoName: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            <TextField
-              label="타겟 아티스트"
-              size="small"
-              fullWidth
-              value={details.targetArtist || ""}
-              onChange={(e) => onUpdate({ targetArtist: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            <TextField
-              label="작곡가 (쉼표 구분)"
-              size="small"
-              fullWidth
-              value={details.writers?.join(", ") || ""}
-              onChange={(e) => handleWritersChange(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            <TextField
-              label="지분 (예: John 50%, Jane 50%)"
-              size="small"
-              fullWidth
-              value={details.splits ? formatSplits(details.splits) : ""}
-              onChange={(e) => handleSplitsChange(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            {formatWritersWithSplits() && (
-              <Box sx={{ p: 1.5, bgcolor: "rgba(0, 0, 0, 0.03)", borderRadius: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                  Writers & Splits
-                </Typography>
-                <Typography variant="body2">
-                  {formatWritersWithSplits()}
-                </Typography>
-              </Box>
-            )}
-
-            <TextField
-              label="퍼블리싱 정보"
-              size="small"
-              fullWidth
-              value={details.publishingInfo || ""}
-              onChange={(e) => onUpdate({ publishingInfo: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            <TextField
-              label="이메일"
-              size="small"
-              fullWidth
-              type="email"
-              value={details.email || ""}
-              onChange={(e) => onUpdate({ email: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            <TextField
-              label="메모"
-              size="small"
-              fullWidth
-              multiline
-              rows={3}
-              value={details.notes || ""}
-              onChange={(e) => onUpdate({ notes: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            {type === "HOLD" && (
-              <>
-                <Box onClick={(e) => e.stopPropagation()}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                    홀드 요청일
-                  </Typography>
-                  <DateSelect
-                    value={details.holdRequestedDate}
-                    onChange={(date) => onUpdate({ holdRequestedDate: date })}
-                  />
-                </Box>
-
-                <TextField
-                  label="홀드 기간"
-                  size="small"
-                  fullWidth
-                  value={details.holdPeriod || ""}
-                  onChange={(e) => onUpdate({ holdPeriod: e.target.value })}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </>
-            )}
-
-            {type === "FIX" && (
-              <>
-                <Box onClick={(e) => e.stopPropagation()}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                    픽스 날짜
-                  </Typography>
-                  <DateSelect
-                    value={details.fixDate}
-                    onChange={(date) => onUpdate({ fixDate: date })}
-                  />
-                </Box>
-
-                <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
-                  <TextField
-                    label="프로덕션 비용"
-                    size="small"
-                    type="number"
-                    value={details.productionFee || ""}
-                    onChange={(e) => onUpdate({ productionFee: parseFloat(e.target.value) || 0 })}
-                    sx={{ flex: 1 }}
-                  />
-                  <FormControl size="small" sx={{ minWidth: 90 }}>
-                    <InputLabel>Currency</InputLabel>
-                    <Select
-                      value={details.currency || "KRW"}
-                      label="Currency"
-                      onChange={(e) => onUpdate({ currency: e.target.value as Currency })}
-                    >
-                      <MenuItem value="KRW">KRW</MenuItem>
-                      <MenuItem value="USD">USD</MenuItem>
-                      <MenuItem value="EUR">EUR</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Stack>
-              </>
-            )}
-
-            {type === "RELEASE" && (
-              <>
-                <Box onClick={(e) => e.stopPropagation()}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
-                    발매일
-                  </Typography>
-                  <DateSelect
-                    value={details.releaseDate}
-                    onChange={(date) => onUpdate({ releaseDate: date })}
-                  />
-                </Box>
-
-                <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
-                  <TextField
-                    label="프로덕션 비용"
-                    size="small"
-                    type="number"
-                    value={details.productionFee || ""}
-                    onChange={(e) => onUpdate({ productionFee: parseFloat(e.target.value) || 0 })}
-                    sx={{ flex: 1 }}
-                  />
-                  <FormControl size="small" sx={{ minWidth: 90 }}>
-                    <InputLabel>Currency</InputLabel>
-                    <Select
-                      value={details.currency || "KRW"}
-                      label="Currency"
-                      onChange={(e) => onUpdate({ currency: e.target.value as Currency })}
-                    >
-                      <MenuItem value="KRW">KRW</MenuItem>
-                      <MenuItem value="USD">USD</MenuItem>
-                      <MenuItem value="EUR">EUR</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Stack>
-              </>
-            )}
-          </Stack>
-        </Box>
-      </Collapse>
     </Card>
   );
 }
 
 interface DraggableCardProps {
   task: TimTask;
-  onUpdate: (updates: Partial<HoldFixDetails>) => void;
+  onCardClick: () => void;
   onDelete: () => void;
 }
 
-function DraggableCard({ task, onUpdate, onDelete }: DraggableCardProps) {
+function DraggableCard({ task, onCardClick, onDelete }: DraggableCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
   });
 
   return (
-    <div ref={setNodeRef} {...listeners} {...attributes}>
-      <CompactCard task={task} onUpdate={onUpdate} onDelete={onDelete} isDragging={isDragging} />
+    <div ref={setNodeRef}>
+      <CompactCard
+        task={task}
+        onCardClick={onCardClick}
+        onDelete={onDelete}
+        isDragging={isDragging}
+        dragAttributes={attributes}
+        dragListeners={listeners}
+      />
     </div>
   );
 }
@@ -444,11 +508,11 @@ function DraggableCard({ task, onUpdate, onDelete }: DraggableCardProps) {
 interface ColumnProps {
   type: HoldFixType;
   tasks: TimTask[];
-  onUpdate: (taskId: string, updates: Partial<HoldFixDetails>) => void;
+  onCardClick: (taskId: string) => void;
   onDelete: (taskId: string) => void;
 }
 
-function Column({ type, tasks, onUpdate, onDelete }: ColumnProps) {
+function Column({ type, tasks, onCardClick, onDelete }: ColumnProps) {
   const { setNodeRef } = useDroppable({
     id: type,
   });
@@ -494,7 +558,7 @@ function Column({ type, tasks, onUpdate, onDelete }: ColumnProps) {
             <DraggableCard
               key={task.id}
               task={task}
-              onUpdate={(updates) => onUpdate(task.id, updates)}
+              onCardClick={() => onCardClick(task.id)}
               onDelete={() => onDelete(task.id)}
             />
           ))}
@@ -520,6 +584,8 @@ function Column({ type, tasks, onUpdate, onDelete }: ColumnProps) {
 export default function HoldFixBoard() {
   const { tasks, updateTask, deleteTask, moveHoldFixType } = useTaskContext();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TimTask | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -553,12 +619,19 @@ export default function HoldFixBoard() {
     }
   };
 
-  const handleUpdate = (taskId: string, updates: Partial<HoldFixDetails>) => {
+  const handleCardClick = (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
-    if (task && task.holdFixDetails) {
-      updateTask(taskId, {
+    if (task) {
+      setSelectedTask(task);
+      setDialogOpen(true);
+    }
+  };
+
+  const handleUpdate = (updates: Partial<HoldFixDetails>) => {
+    if (selectedTask && selectedTask.holdFixDetails) {
+      updateTask(selectedTask.id, {
         holdFixDetails: {
-          ...task.holdFixDetails,
+          ...selectedTask.holdFixDetails,
           ...updates,
         },
       });
@@ -567,6 +640,12 @@ export default function HoldFixBoard() {
 
   const handleDelete = (taskId: string) => {
     deleteTask(taskId);
+  };
+
+  const handleDialogDelete = () => {
+    if (selectedTask) {
+      deleteTask(selectedTask.id);
+    }
   };
 
   const activeTask = activeId ? items.find((t) => t.id === activeId) : null;
@@ -585,26 +664,33 @@ export default function HoldFixBoard() {
       >
         <Stack direction="row" spacing={2} sx={{ height: "calc(100vh - 180px)" }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Column type="HOLD" tasks={holdItems} onUpdate={handleUpdate} onDelete={handleDelete} />
+            <Column type="HOLD" tasks={holdItems} onCardClick={handleCardClick} onDelete={handleDelete} />
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Column type="FIX" tasks={fixItems} onUpdate={handleUpdate} onDelete={handleDelete} />
+            <Column type="FIX" tasks={fixItems} onCardClick={handleCardClick} onDelete={handleDelete} />
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Column type="RELEASE" tasks={releaseItems} onUpdate={handleUpdate} onDelete={handleDelete} />
+            <Column type="RELEASE" tasks={releaseItems} onCardClick={handleCardClick} onDelete={handleDelete} />
           </Box>
         </Stack>
         <DragOverlay>
           {activeTask ? (
             <CompactCard
               task={activeTask}
-              onUpdate={() => {}}
+              onCardClick={() => {}}
               onDelete={() => {}}
               isDragging
             />
           ) : null}
         </DragOverlay>
       </DndContext>
+      <DetailDialog
+        open={dialogOpen}
+        task={selectedTask}
+        onClose={() => setDialogOpen(false)}
+        onSave={handleUpdate}
+        onDelete={handleDialogDelete}
+      />
     </Box>
   );
 }

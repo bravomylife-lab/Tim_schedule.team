@@ -33,9 +33,11 @@ export interface HoldFixDetails {
   demoName: string;
   writers: string[];
   splits: Record<string, number>;
+  splitsNote?: string;
   publishingInfo: string;
   email: string;
   productionFee?: number;
+  mechanicalFee?: number;
   currency?: Currency;
   holdRequestedDate?: string;
   holdPeriod?: string;

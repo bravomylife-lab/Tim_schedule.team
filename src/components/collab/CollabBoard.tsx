@@ -23,7 +23,7 @@ import Menu from "@mui/material/Menu";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
 import CloseRounded from "@mui/icons-material/CloseRounded";
-import { DndContext, DragEndEvent, closestCorners, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, closestCorners, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
@@ -431,10 +431,15 @@ function CompactCollabCard({
           </Stack>
         </Stack>
 
-        {/* Line 2: Caption: Topliner | Target Artist | 의뢰일 */}
+        {/* Line 2: Caption: Topliner | Target Artist | 의뢰일 | 데드라인 */}
         <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
-          {details?.topLiner || "TBD"} | {details?.targetArtist || "TBD"} | 의뢰일:{" "}
-          {formatDate(details?.requestedDate || task.startDate)}
+          탑라이너: {details?.topLiner || "TBD"} | 타겟: {details?.targetArtist || "TBD"}
+        </Typography>
+
+        {/* Line 3: Caption: 의뢰일 | 데드라인 */}
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
+          의뢰: {formatDate(details?.requestedDate || task.startDate)}
+          {details?.deadline && ` | 데드라인: ${formatDate(details.deadline)}`}
         </Typography>
       </Stack>
     </Paper>
@@ -543,8 +548,11 @@ function CompactCollabCardStatic({
           </Stack>
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
-          {details?.topLiner || "TBD"} | {details?.targetArtist || "TBD"} | 의뢰일:{" "}
-          {formatDate(details?.requestedDate || task.startDate)}
+          탑라이너: {details?.topLiner || "TBD"} | 타겟: {details?.targetArtist || "TBD"}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
+          의뢰: {formatDate(details?.requestedDate || task.startDate)}
+          {details?.deadline && ` | 데드라인: ${formatDate(details.deadline)}`}
         </Typography>
       </Stack>
     </Paper>
@@ -593,6 +601,12 @@ export default function CollabBoard() {
   const [selectedTask, setSelectedTask] = useState<TimTask | null>(null);
   const [createMode, setCreateMode] = useState(false);
   const [createColumnStatus, setCreateColumnStatus] = useState<CollabStatus>("REQUESTED");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over) return;
@@ -703,7 +717,7 @@ export default function CollabBoard() {
         subtitle="협업 의뢰부터 완료까지 단계별 진행 상황을 확인하고 팀과 함께 관리합니다"
       />
       {mounted ? (
-        <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+        <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd} sensors={sensors}>
           <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
             {columns.map((column) => (
               <CollabColumn
