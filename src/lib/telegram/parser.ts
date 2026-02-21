@@ -205,13 +205,25 @@ export function parseQuery(text: string): QueryIntent {
   }
 
   // ── '라는 곡' 전역 패턴 — 데모 키워드 없어도 DEMO 검색 ──────────────────────
-  // 예: "Wasted라는 곡의 정보줘", "Nu vibe라는 제목의 곡 정보줘"
-  // 단, 다른 시트 전용 키워드가 없을 때만 DEMO로 라우팅
   if (!t.includes('협업') && !t.includes('발매') && !t.includes('릴리즈') &&
       !t.includes('홀드') && !t.includes('픽스') && !t.includes('피칭')) {
     const demoTitleMatch = text.match(/(.+?)(?:이라는|라는)\s*(?:제목의?\s*)?곡/);
     if (demoTitleMatch) {
       const title = demoTitleMatch[1].trim();
+      if (title) {
+        return { type: 'DEMO_BY_TITLE', title };
+      }
+    }
+  }
+
+  // ── "곡" 키워드 패턴 — "XXX곡 정보줘", "XXX 곡정보", "XXX 곡 정보" 등 ────
+  // 다른 시트 키워드가 없을 때만 DEMO로 라우팅
+  if (!t.includes('협업') && !t.includes('발매') && !t.includes('릴리즈') &&
+      !t.includes('홀드') && !t.includes('픽스') && !t.includes('피칭')) {
+    // "XXX곡 정보줘" / "XXX곡정보" / "XXX 곡 정보줘" / "XXX 곡정보줘"
+    const songMatch = text.trim().match(/^(.+?)\s*곡\s*(?:의?\s*)?(?:정보|찾아|보여|알려|검색)?(?:줘|줘요|요)?[.?!]?\s*$/i);
+    if (songMatch) {
+      const title = songMatch[1].trim();
       if (title) {
         return { type: 'DEMO_BY_TITLE', title };
       }
@@ -228,13 +240,13 @@ export function parseQuery(text: string): QueryIntent {
   for (const pattern of searchPatterns) {
     const match = text.trim().match(pattern);
     if (match) {
-      // 첫 번째 패턴: 키워드가 group 1
-      // 두 번째 패턴: 키워드가 group 2
       const keyword = (match[1] === '검색' || match[1] === '찾기' || match[1].toLowerCase() === 'search')
         ? match[2]
         : match[1];
       if (keyword && keyword.trim().length > 0) {
-        return { type: 'SEARCH', keyword: keyword.trim() };
+        // 키워드에서 "곡" 접미사 제거 (예: "Car wash곡" → "Car wash")
+        const cleaned = keyword.trim().replace(/\s*곡\s*$/, '').trim();
+        return { type: 'SEARCH', keyword: cleaned || keyword.trim() };
       }
     }
   }
