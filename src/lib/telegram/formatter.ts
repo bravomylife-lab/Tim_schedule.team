@@ -238,7 +238,7 @@ export function formatHoldList(rows: string[][], holdType?: string): string {
     : holdType === 'RELEASE' ? '릴리즈'
     : '전체';
 
-  const header = `📌 *홀드_픽스 ${escapeMarkdown(typeLabel)}* \\(${escapeMarkdown(String(total))}건\\)\n`;
+  const header = `📌 *홀드\\_픽스 ${escapeMarkdown(typeLabel)}* \\(${escapeMarkdown(String(total))}건\\)\n`;
 
   if (paged.length === 0) {
     return `${header}\n해당 항목이 없습니다\\.`;
@@ -415,7 +415,7 @@ export function formatHelp(): string {
 • \`협업 진행중\` — 진행중인 협업만 표시
 • \`협업 요청\` — 요청된 협업만 표시
 
-*홀드_픽스*
+*홀드\_픽스*
 • \`홀드\` — 홀드 항목 목록
 • \`픽스\` or \`fix\` — 픽스 항목 목록
 

@@ -42,19 +42,29 @@ async function sendMessage(chatId: number, text: string): Promise<void> {
   }
 
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+  // MarkdownV2로 먼저 시도
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: 'MarkdownV2',
-    }),
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'MarkdownV2' }),
   });
 
-  if (!res.ok) {
-    const body = await res.text();
-    console.error(`sendMessage 실패 (chatId=${chatId}):`, body);
+  if (res.ok) return;
+
+  // MarkdownV2 실패 시 plain text로 재시도 (특수문자 제거)
+  const errBody = await res.text();
+  console.error(`sendMessage MarkdownV2 실패 (chatId=${chatId}):`, errBody);
+
+  const plainText = text.replace(/[\\*_`\[\]()~>#+=|{}.!]/g, '');
+  const fallback = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: plainText }),
+  });
+  if (!fallback.ok) {
+    const fb = await fallback.text();
+    console.error(`sendMessage plain text 폴백도 실패 (chatId=${chatId}):`, fb);
   }
 }
 
