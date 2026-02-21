@@ -100,7 +100,7 @@ export async function readSheet(sheetName: string): Promise<string[][]> {
 // 전체 시트 일괄 읽기
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SHEET_NAMES = ['협업', '홀드_픽스', '릴리즈_스케줄', '피칭_아이디어', 'DEMO_음원_관리'] as const;
+const SHEET_NAMES = ['협업', '홀드_픽스', '릴리즈_스케줄', '피칭_아이디어', 'DEMO 음원 관리'] as const;
 export type SheetName = (typeof SHEET_NAMES)[number];
 
 /**

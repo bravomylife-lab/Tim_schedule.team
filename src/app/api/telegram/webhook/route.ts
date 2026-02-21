@@ -193,7 +193,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case 'DEMO_BY_TITLE': {
         let rows: string[][];
         try {
-          rows = await readSheet('DEMO_음원_관리');
+          rows = await readSheet('DEMO 음원 관리');
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case 'DEMO_BY_PUBLISHING': {
         let rows: string[][];
         try {
-          rows = await readSheet('DEMO_음원_관리');
+          rows = await readSheet('DEMO 음원 관리');
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });
@@ -219,7 +219,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case 'DEMO_BY_RATING': {
         let rows: string[][];
         try {
-          rows = await readSheet('DEMO_음원_관리');
+          rows = await readSheet('DEMO 음원 관리');
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });

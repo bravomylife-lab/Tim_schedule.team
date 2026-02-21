@@ -346,8 +346,9 @@ export function formatPitchingList(rows: string[][], grade?: string): string {
  *  0               1         2            3               4        5               6          7
  */
 const COL_DEMO = {
-  receivedDate: 0, songTitle: 1, authorInfo: 2, publishingInfo: 3,
-  genre: 4, feeling: 5, ratingScore: 6, email: 7,
+  receivedDate: 0, authorInfo: 1, songTitle: 2, demoFileName: 3,
+  publishingInfo: 4, genre: 5, feeling: 6, ratingScore: 7,
+  email: 9,
 } as const;
 
 export function formatDemoList(

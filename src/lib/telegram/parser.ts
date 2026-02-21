@@ -169,15 +169,27 @@ export function parseQuery(text: string): QueryIntent {
       }
     }
 
-    // 곡 제목 필터: "[곡명]이라는 곡 제목 찾아서", "데모명 [곡명]", "곡명 [곡명]"
-    const titleByNameMatch = text.match(/(?:데모명|곡명)\s+(.+?)(?:\s|$)/i);
+    // 곡 제목 필터 (1): "[TITLE]라는곡", "[TITLE]이라는 곡" — 맥락 접두어 포함 처리
+    // 예: "Demo 음원관리에 네 기억속에 나라는곡 정보줘"
+    const contextTitleMatch = text.match(/(?:demo|데모|음원\s*관리).*?에\s+(.+?)(?:이라는|라는)\s*곡/i);
+    if (contextTitleMatch) {
+      const title = contextTitleMatch[1].trim();
+      if (title) {
+        return { type: 'DEMO_BY_TITLE', title };
+      }
+    }
+
+    // 곡 제목 필터 (2): "데모명 [곡명]", "곡명 [곡명]"
+    const titleByNameMatch = text.match(/(?:데모명|곡명)\s+(.+?)(?:\s*(?:정보|찾아|보여|알려)|$)/i);
     if (titleByNameMatch) {
       const title = titleByNameMatch[1].trim();
       if (title) {
         return { type: 'DEMO_BY_TITLE', title };
       }
     }
-    const titleByPhraseMatch = text.match(/(.+?)(?:이라는|라는)\s*곡\s*제목/);
+
+    // 곡 제목 필터 (3): "[곡명]이라는곡", "[곡명]라는 곡" — 제목 불필요
+    const titleByPhraseMatch = text.match(/(.+?)(?:이라는|라는)\s*곡/);
     if (titleByPhraseMatch) {
       const title = titleByPhraseMatch[1].trim();
       if (title) {
@@ -186,7 +198,6 @@ export function parseQuery(text: string): QueryIntent {
     }
 
     // 데모 키워드가 있는데 다른 패턴에 안 걸리면 → DEMO_BY_TITLE로 텍스트 전달
-    // (더 구체적인 의도 파악 불가 시 전체 텍스트를 제목 검색으로)
     const trimmedForDemo = text.trim();
     if (trimmedForDemo.length > 0) {
       return { type: 'DEMO_BY_TITLE', title: trimmedForDemo };
