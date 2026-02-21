@@ -119,7 +119,7 @@ export function formatReleaseList(
     lines.push(`   작사: ${lyric} \\| 작곡: ${composed}`);
     lines.push(`   발매일: ${date}`);
     if (youtube) {
-      lines.push(`   🔗 [YouTube](${escapeMarkdown(youtube)})`);
+      lines.push(`   🔗 [YouTube](${youtube})`);
     }
     lines.push('');
   });
@@ -265,7 +265,7 @@ export function formatHoldList(rows: string[][], holdType?: string): string {
     lines.push(`   타겟: ${target}`);
     lines.push(`   홀드날짜: ${holdDate} \\| 홀드기간: ${holdPeriod}`);
     if (prodFee || mechFee) {
-      lines.push(`   프로덕션피: ${escapeMarkdown(prodFee || '\\-')} \\| Mech피: ${escapeMarkdown(mechFee || '\\-')} ${currency}`);
+      lines.push(`   프로덕션피: ${prodFee ? escapeMarkdown(prodFee) : '\\-'} \\| Mech피: ${mechFee ? escapeMarkdown(mechFee) : '\\-'} ${currency}`);
     }
     lines.push('');
   });
@@ -415,7 +415,7 @@ export function formatHelp(): string {
 • \`협업 진행중\` — 진행중인 협업만 표시
 • \`협업 요청\` — 요청된 협업만 표시
 
-*홀드\_픽스*
+*홀드\\_픽스*
 • \`홀드\` — 홀드 항목 목록
 • \`픽스\` or \`fix\` — 픽스 항목 목록
 
@@ -425,8 +425,8 @@ export function formatHelp(): string {
 • \`피칭 A급\` — A 등급만 표시
 
 *검색*
-• \`[곡명] 정보\` — 특정 곡 검색
-• \`[키워드] 찾아줘\` — 키워드로 전체 검색
+• \`\\[곡명\\] 정보\` — 특정 곡 검색
+• \`\\[키워드\\] 찾아줘\` — 키워드로 전체 검색
 
 *기타*
 • \`/help\` — 이 도움말 표시`;
