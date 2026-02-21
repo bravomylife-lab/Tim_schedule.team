@@ -95,24 +95,16 @@ export function getDemoSpreadsheetId(): string {
 }
 
 /**
- * DEMO 스프레드시트의 탭 이름을 자동으로 찾아 반환합니다.
- * 첫 번째 탭(index 0)을 기본 DEMO 탭으로 사용합니다.
- * 발견된 이름은 캐시되어 재사용됩니다.
+ * DEMO 스프레드시트의 탭 이름을 반환합니다.
+ * 환경변수 DEMO_SHEET_NAME 이 있으면 사용, 없으면 기본값 '음원관리대장' 사용.
+ * .xlsx 파일은 metadata API로 탭 이름을 가져올 수 없으므로 직접 지정합니다.
  */
 export async function getDemoSheetName(): Promise<string> {
   if (_demoSheetNameCache) return _demoSheetNameCache;
-  const demoSsId = getDemoSpreadsheetId();
-  const titles = await getAllSheetTitles(demoSsId);
-  // 첫 번째 탭을 사용 (DEMO 스프레드시트의 메인 시트)
-  const found = titles[0];
-  if (found) {
-    _demoSheetNameCache = found;
-    console.log(`[getDemoSheetName] DEMO 시트: "${found}" (${demoSsId})`);
-    return found;
-  }
-  throw new Error(
-    `DEMO 시트를 찾을 수 없습니다.\n사용 가능한 시트: ${titles.join(', ') || '(없음)'}`,
-  );
+  const name = process.env.DEMO_SHEET_NAME ?? '음원관리대장';
+  _demoSheetNameCache = name;
+  console.log(`[getDemoSheetName] DEMO 시트 탭: "${name}"`);
+  return name;
 }
 
 /**

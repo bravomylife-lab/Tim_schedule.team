@@ -341,14 +341,14 @@ export function formatPitchingList(rows: string[][], grade?: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * DEMO_음원_관리 시트 컬럼 인덱스
- * [데모 받은 날짜, 노래 제목, 저작자 정보, 퍼블리싱 정보, 곡 장르, 곡에 대한 느낌, 평가 점수, 데모 전달 받은 메일 주소]
- *  0               1         2            3               4        5               6          7
+ * 음원관리대장 시트 컬럼 인덱스 (스크린샷 기준)
+ * A: 데모 받은 날짜, B: 저작자 정보, C: 노래 제목, D: 데모파일명,
+ * E: 타겟 아티스트, F: 장르, G: 곡에 대한 느낌, H: 평가 점수, I: 메일
  */
 const COL_DEMO = {
   receivedDate: 0, authorInfo: 1, songTitle: 2, demoFileName: 3,
-  publishingInfo: 4, genre: 5, feeling: 6, ratingScore: 7,
-  email: 8, targetArtist: 9,
+  targetArtist: 4, genre: 5, feeling: 6, ratingScore: 7,
+  email: 8,
 } as const;
 
 export function formatDemoList(
@@ -369,12 +369,13 @@ export function formatDemoList(
     });
     headerLabel = `"${escapeMarkdown(String(filterValue))}" 제목 검색`;
   } else if (mode === 'by_publishing') {
+    // 퍼블리싱 컬럼이 없으므로 저작자 정보(authorInfo)에서 검색
     const company = String(filterValue).toLowerCase();
     filtered = dataRows.filter((row) => {
-      const publishing = (row[COL_DEMO.publishingInfo] ?? '').toLowerCase();
-      return publishing.includes(company);
+      const author = (row[COL_DEMO.authorInfo] ?? '').toLowerCase();
+      return author.includes(company);
     });
-    headerLabel = `퍼블리싱 "${escapeMarkdown(String(filterValue))}"`;
+    headerLabel = `저작자 "${escapeMarkdown(String(filterValue))}"`;
   } else {
     // by_rating
     const targetScore = Number(filterValue);
@@ -401,7 +402,6 @@ export function formatDemoList(
     const receivedDate = fmtDate(row[COL_DEMO.receivedDate] ?? '');
     const authorInfo   = orEmpty(row[COL_DEMO.authorInfo]);
     const demoFileName = (row[COL_DEMO.demoFileName] ?? '').trim();
-    const publishing   = orEmpty(row[COL_DEMO.publishingInfo]);
     const genre        = orEmpty(row[COL_DEMO.genre]);
     const feeling      = orEmpty(row[COL_DEMO.feeling]);
     const rating       = orEmpty(row[COL_DEMO.ratingScore]);
@@ -412,11 +412,10 @@ export function formatDemoList(
     lines.push(`   받은 날짜: ${receivedDate}`);
     lines.push(`   저작자: ${authorInfo}`);
     if (demoFileName) lines.push(`   데모파일명: ${escapeMarkdown(demoFileName)}`);
-    lines.push(`   퍼블리싱: ${publishing} \\| 장르: ${genre}`);
+    lines.push(`   타겟: ${targetArtist ? escapeMarkdown(targetArtist) : '\\-'} \\| 장르: ${genre}`);
     lines.push(`   느낌: ${feeling}`);
     lines.push(`   평가 점수: ${rating}`);
     if (email) lines.push(`   메일: ${escapeMarkdown(email)}`);
-    if (targetArtist) lines.push(`   피칭 대상: ${escapeMarkdown(targetArtist)}`);
     lines.push('');
   });
 
