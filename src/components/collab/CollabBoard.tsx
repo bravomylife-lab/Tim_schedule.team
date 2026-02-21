@@ -315,11 +315,13 @@ function CompactCollabCard({
   onClick,
   onDelete,
   onDismissModified,
+  onUpdate,
 }: {
   task: TimTask;
   onClick: () => void;
   onDelete: (id: string) => void;
   onDismissModified: (id: string) => void;
+  onUpdate: (id: string, updates: Partial<TimTask>) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
@@ -350,6 +352,17 @@ function CompactCollabCard({
     onDismissModified(task.id);
   };
 
+  const handleMixMonitorToggle = (e: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+    e.stopPropagation();
+    if (!details) return;
+    onUpdate(task.id, {
+      collabDetails: {
+        ...details,
+        mixMonitorSent: checked,
+      },
+    });
+  };
+
   return (
     <Paper
       ref={setNodeRef}
@@ -373,7 +386,7 @@ function CompactCollabCard({
       }}
     >
       <Stack spacing={0.5}>
-        {/* Line 1: Publishing chip + Producer + Track/Song + D-day + Delete */}
+        {/* Line 1: Publishing chip + Producer + Track/Song + D-day + Actions */}
         <Stack direction="row" alignItems="center" spacing={1} justifyContent="space-between">
           <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, overflow: "hidden" }}>
             <Chip
@@ -412,6 +425,14 @@ function CompactCollabCard({
             )}
           </Stack>
           <Stack direction="row" alignItems="center" spacing={0.5}>
+            {details?.status === "COMPLETED" && (
+              <Checkbox
+                checked={details?.mixMonitorSent || false}
+                onChange={handleMixMonitorToggle}
+                size="small"
+                title="Mix Monitor Sent"
+              />
+            )}
             {task.calendarModified && (
               <Box
                 onClick={handleDismissModified}
@@ -451,11 +472,13 @@ function CompactCollabCardStatic({
   onClick,
   onDelete,
   onDismissModified,
+  onUpdate,
 }: {
   task: TimTask;
   onClick: () => void;
   onDelete: (id: string) => void;
   onDismissModified: (id: string) => void;
+  onUpdate: (id: string, updates: Partial<TimTask>) => void;
 }) {
   const details = task.collabDetails;
   const deadlineDate = parseISOIfValid(details?.deadline);
@@ -472,6 +495,17 @@ function CompactCollabCardStatic({
   const handleDismissModified = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDismissModified(task.id);
+  };
+
+  const handleMixMonitorToggle = (e: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+    e.stopPropagation();
+    if (!details) return;
+    onUpdate(task.id, {
+      collabDetails: {
+        ...details,
+        mixMonitorSent: checked,
+      },
+    });
   };
 
   return (
@@ -529,6 +563,14 @@ function CompactCollabCardStatic({
             )}
           </Stack>
           <Stack direction="row" alignItems="center" spacing={0.5}>
+            {details?.status === "COMPLETED" && (
+              <Checkbox
+                checked={details?.mixMonitorSent || false}
+                onChange={handleMixMonitorToggle}
+                size="small"
+                title="Mix Monitor Sent"
+              />
+            )}
             {task.calendarModified && (
               <Box
                 onClick={handleDismissModified}
@@ -729,6 +771,7 @@ export default function CollabBoard() {
                 onDelete={handleDelete}
                 onDismissModified={handleDismissModified}
                 onCreateNew={handleCreateNew}
+                onUpdate={updateTask}
               />
             ))}
           </Box>
@@ -753,6 +796,7 @@ export default function CollabBoard() {
                     onClick={() => handleCardClick(task)}
                     onDelete={handleDelete}
                     onDismissModified={handleDismissModified}
+                    onUpdate={updateTask}
                   />
                 ))}
               </Stack>
@@ -781,6 +825,7 @@ function CollabColumn({
   onDelete,
   onDismissModified,
   onCreateNew,
+  onUpdate,
 }: {
   columnId: CollabStatus;
   title: string;
@@ -789,6 +834,7 @@ function CollabColumn({
   onDelete: (id: string) => void;
   onDismissModified: (id: string) => void;
   onCreateNew: (columnStatus: CollabStatus) => void;
+  onUpdate: (id: string, updates: Partial<TimTask>) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: columnId });
 
@@ -847,6 +893,7 @@ function CollabColumn({
                 onClick={() => onCardClick(task)}
                 onDelete={onDelete}
                 onDismissModified={onDismissModified}
+                onUpdate={onUpdate}
               />
             ))}
           </Stack>
