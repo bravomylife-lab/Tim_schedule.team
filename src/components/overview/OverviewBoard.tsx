@@ -15,6 +15,11 @@ import Divider from "@mui/material/Divider";
 import TextField from "@mui/material/TextField";
 import Collapse from "@mui/material/Collapse";
 import Tooltip from "@mui/material/Tooltip";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Button from "@mui/material/Button";
 import StarRounded from "@mui/icons-material/StarRounded";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
@@ -23,6 +28,8 @@ import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
+import OpenInFullRounded from "@mui/icons-material/OpenInFullRounded";
+import CloseRounded from "@mui/icons-material/CloseRounded";
 import {
   DndContext,
   DragEndEvent,
@@ -258,7 +265,9 @@ interface ReportItemCardProps {
 
 function ReportItemCard({ item, onDelete, onUpdateNotes }: ReportItemCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [notes, setNotes] = useState(item.notes);
+  const [dialogNotes, setDialogNotes] = useState(item.notes);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleNotesChange = (value: string) => {
@@ -269,55 +278,151 @@ function ReportItemCard({ item, onDelete, onUpdateNotes }: ReportItemCardProps) 
     }, 500);
   };
 
+  const handleDialogOpen = () => {
+    setDialogNotes(notes);
+    setDialogOpen(true);
+  };
+
+  const handleDialogSave = () => {
+    setNotes(dialogNotes);
+    onUpdateNotes(item.id, dialogNotes);
+    setDialogOpen(false);
+  };
+
   return (
-    <Card
-      sx={{
-        mb: 2,
-        border: "1px solid",
-        borderColor: "divider",
-      }}
-    >
-      <CardContent sx={{ "&:last-child": { pb: 1.5 } }}>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" fontWeight={500}>
+    <>
+      <Card
+        sx={{
+          mb: 2,
+          border: "1px solid",
+          borderColor: "divider",
+          cursor: "default",
+        }}
+      >
+        <CardContent sx={{ "&:last-child": { pb: 1.5 } }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Box
+              sx={{ flex: 1, cursor: "pointer" }}
+              onClick={handleDialogOpen}
+            >
+              <Typography variant="body1" fontWeight={500}>
+                {item.title}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {format(parseISO(item.createdAt), "MM/dd HH:mm")}
+              </Typography>
+              {notes && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    display: "block",
+                    mt: 0.5,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: "200px",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {notes}
+                </Typography>
+              )}
+            </Box>
+            <Tooltip title="넓게 보기">
+              <IconButton size="small" onClick={handleDialogOpen}>
+                <OpenInFullRounded fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <IconButton size="small" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? (
+                <ExpandLessRounded fontSize="small" />
+              ) : (
+                <ExpandMoreRounded fontSize="small" />
+              )}
+            </IconButton>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => onDelete(item.id)}
+            >
+              <DeleteOutlineRounded fontSize="small" />
+            </IconButton>
+          </Stack>
+          <Collapse in={expanded} timeout="auto" unmountOnExit>
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              maxRows={6}
+              size="small"
+              placeholder="메모를 입력하세요..."
+              value={notes}
+              onChange={(e) => handleNotesChange(e.target.value)}
+              sx={{ mt: 1.5 }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Collapse>
+        </CardContent>
+      </Card>
+
+      {/* Wide dialog view */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { borderTop: "4px solid #7b1fa2" } }}
+      >
+        <DialogTitle
+          sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight={600}>
               {item.title}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {format(parseISO(item.createdAt), "MM/dd HH:mm")}
+              {format(parseISO(item.createdAt), "yyyy.MM.dd HH:mm")}
             </Typography>
           </Box>
-          <IconButton size="small" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? (
-              <ExpandLessRounded fontSize="small" />
-            ) : (
-              <ExpandMoreRounded fontSize="small" />
-            )}
-          </IconButton>
-          <IconButton
-            size="small"
-            color="error"
-            onClick={() => onDelete(item.id)}
-          >
-            <DeleteOutlineRounded fontSize="small" />
-          </IconButton>
-        </Stack>
-        <Collapse in={expanded} timeout="auto" unmountOnExit>
+          <Stack direction="row" spacing={0.5}>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => {
+                onDelete(item.id);
+                setDialogOpen(false);
+              }}
+            >
+              <DeleteOutlineRounded fontSize="small" />
+            </IconButton>
+            <IconButton size="small" onClick={() => setDialogOpen(false)}>
+              <CloseRounded fontSize="small" />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers>
           <TextField
             fullWidth
             multiline
-            minRows={2}
-            maxRows={6}
-            size="small"
+            minRows={10}
             placeholder="메모를 입력하세요..."
-            value={notes}
-            onChange={(e) => handleNotesChange(e.target.value)}
-            sx={{ mt: 1.5 }}
-            onClick={(e) => e.stopPropagation()}
+            value={dialogNotes}
+            onChange={(e) => setDialogNotes(e.target.value)}
+            variant="outlined"
+            sx={{ "& .MuiOutlinedInput-root": { fontSize: "0.95rem", lineHeight: 1.7 } }}
           />
-        </Collapse>
-      </CardContent>
-    </Card>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDialogOpen(false)} variant="outlined">
+            취소
+          </Button>
+          <Button onClick={handleDialogSave} variant="contained" sx={{ bgcolor: "#7b1fa2", "&:hover": { bgcolor: "#6a1b9a" } }}>
+            저장
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 
