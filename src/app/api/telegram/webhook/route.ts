@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { parseQuery } from '@/lib/telegram/parser';
-import { readSheet } from '@/lib/telegram/sheets';
+import { readSheet, getDemoSheetName } from '@/lib/telegram/sheets';
 import {
   formatReleaseList,
   formatCollabList,
@@ -193,7 +193,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case 'DEMO_BY_TITLE': {
         let rows: string[][];
         try {
-          rows = await readSheet('DEMO 음원 관리');
+          const sheetName = await getDemoSheetName();
+          rows = await readSheet(sheetName);
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });
@@ -206,7 +207,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case 'DEMO_BY_PUBLISHING': {
         let rows: string[][];
         try {
-          rows = await readSheet('DEMO 음원 관리');
+          const sheetName = await getDemoSheetName();
+          rows = await readSheet(sheetName);
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });
@@ -219,7 +221,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case 'DEMO_BY_RATING': {
         let rows: string[][];
         try {
-          rows = await readSheet('DEMO 음원 관리');
+          const sheetName = await getDemoSheetName();
+          rows = await readSheet(sheetName);
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });

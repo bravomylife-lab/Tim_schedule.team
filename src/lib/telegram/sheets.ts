@@ -70,6 +70,42 @@ export async function getServiceAccountToken(): Promise<string> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * 스프레드시트의 모든 시트 탭 이름을 반환합니다.
+ */
+export async function getAllSheetTitles(): Promise<string[]> {
+  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
+  if (!spreadsheetId) return [];
+  const token = await getServiceAccountToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { sheets?: { properties?: { title?: string } }[] };
+  return (data.sheets ?? []).map((s) => s.properties?.title ?? '').filter(Boolean);
+}
+
+/** 모듈 수준 캐시 (Vercel warm 인스턴스에서 재사용) */
+let _demoSheetNameCache: string | null = null;
+
+/**
+ * DEMO/음원 패턴에 맞는 시트 탭 이름을 자동으로 찾아 반환합니다.
+ * 발견된 이름은 캐시되어 재사용됩니다.
+ */
+export async function getDemoSheetName(): Promise<string> {
+  if (_demoSheetNameCache) return _demoSheetNameCache;
+  const titles = await getAllSheetTitles();
+  const found = titles.find((t) => /demo|음원/i.test(t));
+  if (found) {
+    _demoSheetNameCache = found;
+    console.log(`[getDemoSheetName] 발견된 DEMO 시트: "${found}"`);
+    return found;
+  }
+  // 찾지 못한 경우 사용 가능한 시트 목록을 에러에 포함
+  throw new Error(
+    `DEMO/음원 시트를 찾을 수 없습니다.\n사용 가능한 시트: ${titles.join(', ') || '(없음)'}`,
+  );
+}
+
+/**
  * 지정한 시트 이름의 모든 셀을 2D 배열로 반환합니다.
  * 첫 번째 행은 헤더, 데이터는 index 1부터 시작합니다.
  */
