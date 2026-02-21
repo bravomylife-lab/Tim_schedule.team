@@ -341,47 +341,53 @@ export function formatPitchingList(rows: string[][], grade?: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 음원관리대장 시트 컬럼 인덱스 (스크린샷 기준)
- * A: 데모 받은 날짜, B: 저작자 정보, C: 노래 제목, D: 데모파일명,
- * E: 타겟 아티스트, F: 장르, G: 곡에 대한 느낌, H: 평가 점수, I: 메일
+ * DEMO 음원 검색 — 헤더 행을 키로 사용해 해당 행의 전체 정보를 출력합니다.
+ * 컬럼 구조가 바뀌어도 자동 대응됩니다.
  */
-const COL_DEMO = {
-  receivedDate: 0, authorInfo: 1, songTitle: 2, demoFileName: 3,
-  targetArtist: 4, genre: 5, feeling: 6, ratingScore: 7,
-  email: 8,
-} as const;
-
 export function formatDemoList(
   rows: string[][],
   mode: 'by_title' | 'by_publishing' | 'by_rating',
   filterValue: string | number,
 ): string {
-  const dataRows = rows.slice(1); // 헤더 제외
+  if (rows.length < 2) {
+    return '🎵 *DEMO 음원* — 데이터가 없습니다\\.';
+  }
 
+  const headers = rows[0]; // 헤더 행
+  const dataRows = rows.slice(1);
+
+  // 노래 제목 컬럼 찾기 (헤더에 "제목" 또는 "노래" 포함)
+  const titleColIdx = headers.findIndex((h) => {
+    const hl = (h ?? '').toLowerCase();
+    return hl.includes('제목') || hl.includes('노래') || hl.includes('title');
+  });
+  // 평점 컬럼 찾기
+  const ratingColIdx = headers.findIndex((h) => {
+    const hl = (h ?? '').toLowerCase();
+    return hl.includes('평가') || hl.includes('평점') || hl.includes('점수') || hl.includes('rating');
+  });
+
+  const kw = String(filterValue).toLowerCase();
   let filtered: string[][];
   let headerLabel: string;
 
   if (mode === 'by_title') {
-    const titleKeyword = String(filterValue).toLowerCase();
     filtered = dataRows.filter((row) => {
-      const title = (row[COL_DEMO.songTitle] ?? '').toLowerCase();
-      return title.includes(titleKeyword);
+      // 제목 컬럼에서 검색, 못 찾으면 전체 행에서 검색
+      if (titleColIdx >= 0) {
+        return (row[titleColIdx] ?? '').toLowerCase().includes(kw);
+      }
+      return row.join(' ').toLowerCase().includes(kw);
     });
     headerLabel = `"${escapeMarkdown(String(filterValue))}" 제목 검색`;
   } else if (mode === 'by_publishing') {
-    // 퍼블리싱 컬럼이 없으므로 저작자 정보(authorInfo)에서 검색
-    const company = String(filterValue).toLowerCase();
-    filtered = dataRows.filter((row) => {
-      const author = (row[COL_DEMO.authorInfo] ?? '').toLowerCase();
-      return author.includes(company);
-    });
-    headerLabel = `저작자 "${escapeMarkdown(String(filterValue))}"`;
+    filtered = dataRows.filter((row) => row.join(' ').toLowerCase().includes(kw));
+    headerLabel = `"${escapeMarkdown(String(filterValue))}" 검색`;
   } else {
-    // by_rating
     const targetScore = Number(filterValue);
     filtered = dataRows.filter((row) => {
-      const scoreStr = (row[COL_DEMO.ratingScore] ?? '').trim();
-      const score = parseFloat(scoreStr);
+      if (ratingColIdx < 0) return false;
+      const score = parseFloat((row[ratingColIdx] ?? '').trim());
       return !isNaN(score) && score === targetScore;
     });
     headerLabel = `평점 ${escapeMarkdown(String(filterValue))}`;
@@ -398,24 +404,19 @@ export function formatDemoList(
 
   const lines: string[] = [header];
   paged.forEach((row, i) => {
-    const songTitle    = orEmpty(row[COL_DEMO.songTitle], '(제목 없음)');
-    const receivedDate = fmtDate(row[COL_DEMO.receivedDate] ?? '');
-    const authorInfo   = orEmpty(row[COL_DEMO.authorInfo]);
-    const demoFileName = (row[COL_DEMO.demoFileName] ?? '').trim();
-    const genre        = orEmpty(row[COL_DEMO.genre]);
-    const feeling      = orEmpty(row[COL_DEMO.feeling]);
-    const rating       = orEmpty(row[COL_DEMO.ratingScore]);
-    const email        = (row[COL_DEMO.email] ?? '').trim();
-    const targetArtist = (row[COL_DEMO.targetArtist] ?? '').trim();
+    // 제목 컬럼이 있으면 제목을 굵게 표시
+    const title = titleColIdx >= 0
+      ? orEmpty(row[titleColIdx], '(제목 없음)')
+      : orEmpty(row[0], '(제목 없음)');
+    lines.push(`${escapeMarkdown(String(i + 1))}\\. *${title}*`);
 
-    lines.push(`${escapeMarkdown(String(i + 1))}\\. *${songTitle}*`);
-    lines.push(`   받은 날짜: ${receivedDate}`);
-    lines.push(`   저작자: ${authorInfo}`);
-    if (demoFileName) lines.push(`   데모파일명: ${escapeMarkdown(demoFileName)}`);
-    lines.push(`   타겟: ${targetArtist ? escapeMarkdown(targetArtist) : '\\-'} \\| 장르: ${genre}`);
-    lines.push(`   느낌: ${feeling}`);
-    lines.push(`   평가 점수: ${rating}`);
-    if (email) lines.push(`   메일: ${escapeMarkdown(email)}`);
+    // 나머지 컬럼: 헤더명: 값 형태로 출력
+    headers.forEach((headerName, colIdx) => {
+      if (colIdx === titleColIdx) return; // 제목은 이미 표시함
+      const val = (row[colIdx] ?? '').trim();
+      if (!val) return; // 빈 값은 건너뜀
+      lines.push(`   ${escapeMarkdown(headerName)}: ${escapeMarkdown(val)}`);
+    });
     lines.push('');
   });
 
