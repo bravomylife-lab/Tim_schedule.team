@@ -348,7 +348,7 @@ export function formatPitchingList(rows: string[][], grade?: string): string {
 const COL_DEMO = {
   receivedDate: 0, authorInfo: 1, songTitle: 2, demoFileName: 3,
   publishingInfo: 4, genre: 5, feeling: 6, ratingScore: 7,
-  email: 9, notes: 10,
+  email: 8, targetArtist: 9,
 } as const;
 
 export function formatDemoList(
@@ -405,8 +405,8 @@ export function formatDemoList(
     const genre        = orEmpty(row[COL_DEMO.genre]);
     const feeling      = orEmpty(row[COL_DEMO.feeling]);
     const rating       = orEmpty(row[COL_DEMO.ratingScore]);
-    const email        = orEmpty(row[COL_DEMO.email]);
-    const notes        = (row[COL_DEMO.notes] ?? '').trim();
+    const email        = (row[COL_DEMO.email] ?? '').trim();
+    const targetArtist = (row[COL_DEMO.targetArtist] ?? '').trim();
 
     lines.push(`${escapeMarkdown(String(i + 1))}\\. *${songTitle}*`);
     lines.push(`   받은 날짜: ${receivedDate}`);
@@ -415,8 +415,8 @@ export function formatDemoList(
     lines.push(`   퍼블리싱: ${publishing} \\| 장르: ${genre}`);
     lines.push(`   느낌: ${feeling}`);
     lines.push(`   평가 점수: ${rating}`);
-    if (email && email !== '\\-') lines.push(`   메일: ${email}`);
-    if (notes) lines.push(`   메모: ${escapeMarkdown(notes)}`);
+    if (email) lines.push(`   메일: ${escapeMarkdown(email)}`);
+    if (targetArtist) lines.push(`   피칭 대상: ${escapeMarkdown(targetArtist)}`);
     lines.push('');
   });
 

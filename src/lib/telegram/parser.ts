@@ -204,6 +204,20 @@ export function parseQuery(text: string): QueryIntent {
     }
   }
 
+  // ── '라는 곡' 전역 패턴 — 데모 키워드 없어도 DEMO 검색 ──────────────────────
+  // 예: "Wasted라는 곡의 정보줘", "Nu vibe라는 제목의 곡 정보줘"
+  // 단, 다른 시트 전용 키워드가 없을 때만 DEMO로 라우팅
+  if (!t.includes('협업') && !t.includes('발매') && !t.includes('릴리즈') &&
+      !t.includes('홀드') && !t.includes('픽스') && !t.includes('피칭')) {
+    const demoTitleMatch = text.match(/(.+?)(?:이라는|라는)\s*(?:제목의?\s*)?곡/);
+    if (demoTitleMatch) {
+      const title = demoTitleMatch[1].trim();
+      if (title) {
+        return { type: 'DEMO_BY_TITLE', title };
+      }
+    }
+  }
+
   // ── 검색 ────────────────────────────────────────────────────────────────────
   // "[키워드] 정보" / "[키워드] 찾아줘" / "[키워드] 검색" 패턴
   const searchPatterns = [
