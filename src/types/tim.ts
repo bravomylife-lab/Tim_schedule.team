@@ -105,4 +105,5 @@ export interface ReleaseItem {
   youtubeUrl: string;
   notes?: string;
   createdAt: string;
+  gcalTaskId?: string; // links to a synced Google Calendar task
 }

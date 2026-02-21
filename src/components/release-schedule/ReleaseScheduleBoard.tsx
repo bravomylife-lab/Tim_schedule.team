@@ -41,6 +41,8 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 import { saveAs } from "file-saver";
 import { ReleaseItem } from "@/types/tim";
 import SectionHeader from "@/components/SectionHeader";
+import { useTaskContext } from "@/contexts/TaskContext";
+import EventNoteRounded from "@mui/icons-material/EventNoteRounded";
 
 const LS_KEY = "tim_release_items";
 const PRIMARY_COLOR = "#e91e63";
@@ -357,6 +359,100 @@ function DetailDialog({ open, item, onClose, onEdit, onDelete }: DetailDialogPro
 }
 
 // ──────────────────────────────────────────────
+// Google Calendar event text parser
+// 사용자 작성 패턴: "2026.02.19 발매 가수COII,노래제목typing, 저작자정보Oliver..."
+// ──────────────────────────────────────────────
+interface ParsedGcalEvent {
+  releaseDate: string | null; // "yyyy-MM-dd"
+  artist: string;
+  song: string;
+  writers: string; // raw writers string, goes into all three writer fields
+}
+
+function parseGcalEventText(text: string): ParsedGcalEvent {
+  // 1. Extract date: YYYY.MM.DD or YYYY.M.D anywhere in text
+  const dateMatch = text.match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+  let releaseDate: string | null = null;
+  if (dateMatch) {
+    releaseDate = `${dateMatch[1]}-${dateMatch[2].padStart(2, "0")}-${dateMatch[3].padStart(2, "0")}`;
+  }
+
+  // 2. Use indexOf to locate keyword positions
+  const KW_ARTIST  = "가수";     // length 2
+  const KW_SONG    = "노래제목"; // length 4
+  const KW_WRITERS = "저작자정보"; // length 5
+
+  const artistIdx  = text.indexOf(KW_ARTIST);
+  const songIdx    = text.indexOf(KW_SONG);
+  const writersIdx = text.indexOf(KW_WRITERS);
+
+  function sliceBetween(start: number, kwLen: number, ...ends: number[]): string {
+    const from = start + kwLen;
+    const validEnds = ends.filter((e) => e > from).sort((a, b) => a - b);
+    const raw = validEnds.length > 0 ? text.slice(from, validEnds[0]) : text.slice(from);
+    return raw.replace(/^[\s,]+/, "").replace(/[\s,]+$/, ""); // trim leading/trailing space & comma
+  }
+
+  const artist  = artistIdx  !== -1 ? sliceBetween(artistIdx,  KW_ARTIST.length,  songIdx, writersIdx) : "";
+  const song    = songIdx    !== -1 ? sliceBetween(songIdx,    KW_SONG.length,    artistIdx, writersIdx) : "";
+  const writers = writersIdx !== -1 ? text.slice(writersIdx + KW_WRITERS.length).replace(/^[\s,]+/, "").trim() : "";
+
+  return { releaseDate, artist, song, writers };
+}
+
+// ──────────────────────────────────────────────
+// Google Calendar task detail dialog (read-only)
+// ──────────────────────────────────────────────
+const GCAL_COLOR = "#ff6d00"; // deep orange
+
+interface GCalTaskDialogProps {
+  open: boolean;
+  title: string;
+  date: string;
+  description?: string;
+  onClose: () => void;
+}
+
+function GCalTaskDialog({ open, title, date, description, onClose }: GCalTaskDialogProps) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <EventNoteRounded sx={{ color: GCAL_COLOR }} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            Google Calendar 일정
+          </Typography>
+        </Stack>
+        <IconButton size="small" onClick={onClose}>
+          <CloseRounded fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={1.5}>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+            {title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {date}
+          </Typography>
+          {description && (
+            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+              {description}
+            </Typography>
+          )}
+          <Typography variant="caption" color="text.disabled" sx={{ mt: 1 }}>
+            * Google Calendar에서 동기화된 읽기 전용 일정입니다.
+          </Typography>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>닫기</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// ──────────────────────────────────────────────
 // Calendar helpers
 // ──────────────────────────────────────────────
 const DAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -385,6 +481,7 @@ function itemsInMonth(items: ReleaseItem[], month: Date): ReleaseItem[] {
 // Main Board
 // ──────────────────────────────────────────────
 export default function ReleaseScheduleBoard() {
+  const { tasks } = useTaskContext();
   const [items, setItems] = useState<ReleaseItem[]>([]);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
@@ -394,6 +491,45 @@ export default function ReleaseScheduleBoard() {
   const [selectedItem, setSelectedItem] = useState<ReleaseItem | null>(null);
   const [editMode, setEditMode] = useState<"create" | "edit">("create");
   const [editInitial, setEditInitial] = useState<Omit<ReleaseItem, "id" | "createdAt">>(emptyForm());
+
+  // GCal task dialog state (read-only, kept for fallback)
+  const [gcalOpen, setGcalOpen] = useState(false);
+  const [gcalTask, setGcalTask] = useState<{ title: string; date: string; description?: string } | null>(null);
+
+  // Filter Google Calendar tasks with "릴리즈" or "발매" keywords
+  const gcalReleaseTasks = tasks.filter((t) => {
+    const text = `${t.title} ${t.description ?? ""}`;
+    return text.includes("릴리즈") || text.includes("발매");
+  });
+
+  // GCal task pending ID (used when creating a ReleaseItem from a GCal task)
+  const [pendingGcalTaskId, setPendingGcalTaskId] = useState<string | null>(null);
+
+  const handleGcalChipClick = (taskId: string, title: string, startDate: string, description?: string) => {
+    // Check if there's already a ReleaseItem linked to this GCal task
+    const existing = items.find((i) => i.gcalTaskId === taskId);
+    if (existing) {
+      setSelectedItem(existing);
+      setDetailOpen(true);
+    } else {
+      // Parse structured data from event text (title + description)
+      const fullText = `${title} ${description ?? ""}`;
+      const parsed = parseGcalEventText(fullText);
+      setPendingGcalTaskId(taskId);
+      setEditMode("create");
+      setEditInitial({
+        ...emptyForm(),
+        artist: parsed.artist,
+        song: parsed.song,
+        lyricBy: parsed.writers,
+        composedBy: parsed.writers,
+        arrangedBy: parsed.writers,
+        releaseDate: parsed.releaseDate ?? startDate.slice(0, 10),
+        notes: description ?? "",
+      });
+      setEditOpen(true);
+    }
+  };
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -451,6 +587,7 @@ export default function ReleaseScheduleBoard() {
         ...data,
         id: `release-${Date.now()}`,
         createdAt: new Date().toISOString(),
+        ...(pendingGcalTaskId ? { gcalTaskId: pendingGcalTaskId } : {}),
       };
       persist([...items, newItem]);
     } else if (editMode === "edit" && selectedItem) {
@@ -459,6 +596,7 @@ export default function ReleaseScheduleBoard() {
       );
       setSelectedItem((prev) => (prev ? { ...prev, ...data } : prev));
     }
+    setPendingGcalTaskId(null);
     setEditOpen(false);
   };
 
@@ -538,6 +676,17 @@ export default function ReleaseScheduleBoard() {
           const isToday = isSameDay(day, new Date());
           const dayOfWeek = day.getDay();
 
+          // Google Calendar tasks on this day (exclude those already linked to a ReleaseItem)
+          // Use parsed date from event text, not startDate
+          const linkedGcalIds = new Set(items.map((i) => i.gcalTaskId).filter(Boolean));
+          const dayGcalTasks = gcalReleaseTasks.filter((t) => {
+            if (linkedGcalIds.has(t.id)) return false;
+            const fullText = `${t.title} ${t.description ?? ""}`;
+            const parsed = parseGcalEventText(fullText);
+            const d = parsed.releaseDate ? parseISO(parsed.releaseDate) : parseISO(t.startDate);
+            return isValid(d) && isSameDay(d, day);
+          });
+
           return (
             <Box
               key={day.toISOString()}
@@ -581,6 +730,7 @@ export default function ReleaseScheduleBoard() {
               </Box>
 
               <Stack spacing={0.25}>
+                {/* Manually added release items */}
                 {dayItems.map((item) => (
                   <Chip
                     key={item.id}
@@ -595,6 +745,26 @@ export default function ReleaseScheduleBoard() {
                       cursor: "pointer",
                       "& .MuiChip-label": { px: 0.75 },
                       "&:hover": { backgroundColor: "#c2185b" },
+                      maxWidth: "100%",
+                    }}
+                  />
+                ))}
+                {/* Google Calendar synced release tasks */}
+                {dayGcalTasks.map((t) => (
+                  <Chip
+                    key={t.id}
+                    label={t.title}
+                    size="small"
+                    variant="outlined"
+                    onClick={() => handleGcalChipClick(t.id, t.title, t.startDate, t.description ?? undefined)}
+                    sx={{
+                      borderColor: GCAL_COLOR,
+                      color: GCAL_COLOR,
+                      fontSize: "0.65rem",
+                      height: 18,
+                      cursor: "pointer",
+                      "& .MuiChip-label": { px: 0.75 },
+                      "&:hover": { backgroundColor: "rgba(255,109,0,0.08)" },
                       maxWidth: "100%",
                     }}
                   />
@@ -624,7 +794,7 @@ export default function ReleaseScheduleBoard() {
       <EditDialog
         open={editOpen}
         initial={editInitial}
-        onClose={() => setEditOpen(false)}
+        onClose={() => { setPendingGcalTaskId(null); setEditOpen(false); }}
         onSave={handleSave}
       />
 
@@ -635,6 +805,15 @@ export default function ReleaseScheduleBoard() {
         onClose={() => setDetailOpen(false)}
         onEdit={handleEditFromDetail}
         onDelete={handleDeleteFromDetail}
+      />
+
+      {/* Google Calendar Task Dialog */}
+      <GCalTaskDialog
+        open={gcalOpen}
+        title={gcalTask?.title ?? ""}
+        date={gcalTask?.date ?? ""}
+        description={gcalTask?.description}
+        onClose={() => { setGcalOpen(false); setGcalTask(null); }}
       />
     </Box>
   );

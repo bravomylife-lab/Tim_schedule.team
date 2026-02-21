@@ -19,6 +19,7 @@ import ShowChartRounded from "@mui/icons-material/ShowChartRounded";
 import MusicNoteRounded from "@mui/icons-material/MusicNoteRounded";
 import AlbumRounded from "@mui/icons-material/AlbumRounded";
 import SyncButton from "@/components/SyncButton";
+import DriveButton from "@/components/DriveButton";
 
 const drawerWidth = 280;
 
@@ -85,8 +86,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </ListItemButton>
           ))}
         </List>
-        <Box sx={{ px: 3, pb: 3 }}>
+        <Box sx={{ px: 3, pb: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
           <SyncButton />
+          <DriveButton />
         </Box>
       </Drawer>
       <Box
