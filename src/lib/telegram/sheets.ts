@@ -70,13 +70,13 @@ export async function getServiceAccountToken(): Promise<string> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 스프레드시트의 모든 시트 탭 이름을 반환합니다.
+ * 지정한 스프레드시트의 모든 시트 탭 이름을 반환합니다.
  */
-export async function getAllSheetTitles(): Promise<string[]> {
-  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
-  if (!spreadsheetId) return [];
+export async function getAllSheetTitles(spreadsheetId?: string): Promise<string[]> {
+  const ssId = spreadsheetId ?? process.env.GOOGLE_SPREADSHEET_ID;
+  if (!ssId) return [];
   const token = await getServiceAccountToken();
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${ssId}?fields=sheets.properties.title`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return [];
   const data = (await res.json()) as { sheets?: { properties?: { title?: string } }[] };
@@ -87,37 +87,48 @@ export async function getAllSheetTitles(): Promise<string[]> {
 let _demoSheetNameCache: string | null = null;
 
 /**
- * DEMO/음원 패턴에 맞는 시트 탭 이름을 자동으로 찾아 반환합니다.
+ * DEMO 전용 스프레드시트 ID를 반환합니다.
+ * DEMO_SPREADSHEET_ID 환경변수가 있으면 사용, 없으면 기본 GOOGLE_SPREADSHEET_ID 사용.
+ */
+export function getDemoSpreadsheetId(): string {
+  return process.env.DEMO_SPREADSHEET_ID ?? process.env.GOOGLE_SPREADSHEET_ID ?? '';
+}
+
+/**
+ * DEMO 스프레드시트의 탭 이름을 자동으로 찾아 반환합니다.
+ * 첫 번째 탭(index 0)을 기본 DEMO 탭으로 사용합니다.
  * 발견된 이름은 캐시되어 재사용됩니다.
  */
 export async function getDemoSheetName(): Promise<string> {
   if (_demoSheetNameCache) return _demoSheetNameCache;
-  const titles = await getAllSheetTitles();
-  const found = titles.find((t) => /demo|음원/i.test(t));
+  const demoSsId = getDemoSpreadsheetId();
+  const titles = await getAllSheetTitles(demoSsId);
+  // 첫 번째 탭을 사용 (DEMO 스프레드시트의 메인 시트)
+  const found = titles[0];
   if (found) {
     _demoSheetNameCache = found;
-    console.log(`[getDemoSheetName] 발견된 DEMO 시트: "${found}"`);
+    console.log(`[getDemoSheetName] DEMO 시트: "${found}" (${demoSsId})`);
     return found;
   }
-  // 찾지 못한 경우 사용 가능한 시트 목록을 에러에 포함
   throw new Error(
-    `DEMO/음원 시트를 찾을 수 없습니다.\n사용 가능한 시트: ${titles.join(', ') || '(없음)'}`,
+    `DEMO 시트를 찾을 수 없습니다.\n사용 가능한 시트: ${titles.join(', ') || '(없음)'}`,
   );
 }
 
 /**
  * 지정한 시트 이름의 모든 셀을 2D 배열로 반환합니다.
  * 첫 번째 행은 헤더, 데이터는 index 1부터 시작합니다.
+ * spreadsheetId 를 생략하면 GOOGLE_SPREADSHEET_ID 환경변수를 사용합니다.
  */
-export async function readSheet(sheetName: string): Promise<string[][]> {
-  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
-  if (!spreadsheetId) {
+export async function readSheet(sheetName: string, spreadsheetId?: string): Promise<string[][]> {
+  const ssId = spreadsheetId ?? process.env.GOOGLE_SPREADSHEET_ID;
+  if (!ssId) {
     throw new Error('환경변수 GOOGLE_SPREADSHEET_ID 가 설정되지 않았습니다.');
   }
 
   const token = await getServiceAccountToken();
   const range = encodeURIComponent(`'${sheetName}'`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${ssId}/values/${range}`;
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },

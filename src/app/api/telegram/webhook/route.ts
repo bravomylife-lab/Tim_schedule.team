@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { parseQuery } from '@/lib/telegram/parser';
-import { readSheet, getDemoSheetName } from '@/lib/telegram/sheets';
+import { readSheet, getDemoSheetName, getDemoSpreadsheetId } from '@/lib/telegram/sheets';
 import {
   formatReleaseList,
   formatCollabList,
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         let rows: string[][];
         try {
           const sheetName = await getDemoSheetName();
-          rows = await readSheet(sheetName);
+          rows = await readSheet(sheetName, getDemoSpreadsheetId());
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });
@@ -208,7 +208,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         let rows: string[][];
         try {
           const sheetName = await getDemoSheetName();
-          rows = await readSheet(sheetName);
+          rows = await readSheet(sheetName, getDemoSpreadsheetId());
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });
@@ -222,7 +222,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         let rows: string[][];
         try {
           const sheetName = await getDemoSheetName();
-          rows = await readSheet(sheetName);
+          rows = await readSheet(sheetName, getDemoSpreadsheetId());
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });
@@ -231,20 +231,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         break;
       }
 
-      // 전체 검색 (모든 시트 병렬 조회)
+      // 전체 검색 (모든 시트 병렬 조회 — DEMO 스프레드시트 포함)
       case 'SEARCH': {
         let collab: string[][];
         let holdFix: string[][];
         let release: string[][];
         let pitching: string[][];
+        let demo: string[][] = [];
 
         try {
-          [collab, holdFix, release, pitching] = await Promise.all([
+          const demoSsId = getDemoSpreadsheetId();
+          const demoSheetName = await getDemoSheetName().catch(() => null);
+
+          const tasks: Promise<string[][]>[] = [
             readSheet('협업'),
             readSheet('홀드_픽스'),
             readSheet('릴리즈_스케줄'),
             readSheet('피칭_아이디어'),
-          ]);
+          ];
+          if (demoSheetName) {
+            tasks.push(readSheet(demoSheetName, demoSsId));
+          }
+
+          const results = await Promise.all(tasks);
+          [collab, holdFix, release, pitching] = results as [string[][], string[][], string[][], string[][]];
+          if (demoSheetName) demo = results[4] ?? [];
         } catch (err) {
           await sendErrorMessage(chatId, err);
           return NextResponse.json({ ok: true });
@@ -255,6 +266,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           홀드_픽스: holdFix,
           릴리즈_스케줄: release,
           피칭_아이디어: pitching,
+          ...(demo.length > 0 ? { 'DEMO 음원 관리': demo } : {}),
         };
         response = formatSearchResults(allSheets, intent.keyword);
         break;
