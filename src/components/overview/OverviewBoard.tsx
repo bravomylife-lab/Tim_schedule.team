@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -9,10 +9,20 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Divider from "@mui/material/Divider";
+import TextField from "@mui/material/TextField";
+import Collapse from "@mui/material/Collapse";
+import Tooltip from "@mui/material/Tooltip";
 import StarRounded from "@mui/icons-material/StarRounded";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
 import SyncProblemRounded from "@mui/icons-material/SyncProblemRounded";
+import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
+import AddRounded from "@mui/icons-material/AddRounded";
+import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
+import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import {
   DndContext,
   DragEndEvent,
@@ -42,20 +52,55 @@ import { useTaskContext } from "@/contexts/TaskContext";
 
 // Korean day names mapping
 const KOREAN_DAYS: Record<string, string> = {
-  Sunday: '일요일',
-  Monday: '월요일',
-  Tuesday: '화요일',
-  Wednesday: '수요일',
-  Thursday: '목요일',
-  Friday: '금요일',
-  Saturday: '토요일',
+  Sunday: "일요일",
+  Monday: "월요일",
+  Tuesday: "화요일",
+  Wednesday: "수요일",
+  Thursday: "목요일",
+  Friday: "금요일",
+  Saturday: "토요일",
 };
+
+// ---- Report Item type ----
+interface ReportItem {
+  id: string;
+  title: string;
+  notes: string;
+  createdAt: string;
+}
+
+const LS_REPORT_ITEMS = "tim_report_items";
+
+function loadReportItems(): ReportItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LS_REPORT_ITEMS);
+    if (!raw) return [];
+    return JSON.parse(raw) as ReportItem[];
+  } catch {
+    return [];
+  }
+}
+
+function saveReportItems(items: ReportItem[]) {
+  try {
+    localStorage.setItem(LS_REPORT_ITEMS, JSON.stringify(items));
+  } catch {
+    // storage full
+  }
+}
+
+// ---- SortableTaskCard with "Move to Personal" menu ----
 
 interface SortableTaskCardProps {
   task: TimTask;
   onToggleStar: (id: string) => void;
   onDelete: (id: string) => void;
   onDismissCalendarModified?: (id: string) => void;
+  onMoveToPersonal: (
+    id: string,
+    subCategory: "GENERAL" | "YOUTUBE" | "AUTOMATION"
+  ) => void;
 }
 
 function SortableTaskCard({
@@ -63,6 +108,7 @@ function SortableTaskCard({
   onToggleStar,
   onDelete,
   onDismissCalendarModified,
+  onMoveToPersonal,
 }: SortableTaskCardProps) {
   const {
     attributes,
@@ -77,6 +123,19 @@ function SortableTaskCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    setMenuAnchor(e.currentTarget);
+  };
+  const handleMenuClose = () => setMenuAnchor(null);
+
+  const handleMove = (subCategory: "GENERAL" | "YOUTUBE" | "AUTOMATION") => {
+    onMoveToPersonal(task.id, subCategory);
+    handleMenuClose();
   };
 
   return (
@@ -111,7 +170,7 @@ function SortableTaskCard({
                       label="오늘"
                       size="small"
                       color="primary"
-                      sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }}
+                      sx={{ height: 18, fontSize: "0.65rem", fontWeight: 700 }}
                     />
                   )}
                 </Stack>
@@ -147,6 +206,40 @@ function SortableTaskCard({
               >
                 <DeleteOutlineRounded fontSize="small" />
               </IconButton>
+              <Tooltip title="개인 일정으로 이동">
+                <IconButton size="small" onClick={handleMenuOpen}>
+                  <MoreVertRounded fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={menuAnchor}
+                open={Boolean(menuAnchor)}
+                onClose={handleMenuClose}
+                transformOrigin={{ horizontal: "right", vertical: "top" }}
+                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+              >
+                <MenuItem
+                  dense
+                  onClick={() => handleMove("GENERAL")}
+                  sx={{ fontSize: "0.85rem" }}
+                >
+                  개인 일정으로 이동
+                </MenuItem>
+                <MenuItem
+                  dense
+                  onClick={() => handleMove("YOUTUBE")}
+                  sx={{ fontSize: "0.85rem" }}
+                >
+                  YOUTUBE로 이동
+                </MenuItem>
+                <MenuItem
+                  dense
+                  onClick={() => handleMove("AUTOMATION")}
+                  sx={{ fontSize: "0.85rem" }}
+                >
+                  AI 자동화로 이동
+                </MenuItem>
+              </Menu>
             </Stack>
           </Stack>
         </Stack>
@@ -155,14 +248,100 @@ function SortableTaskCard({
   );
 }
 
+// ---- ReportItemCard ----
+
+interface ReportItemCardProps {
+  item: ReportItem;
+  onDelete: (id: string) => void;
+  onUpdateNotes: (id: string, notes: string) => void;
+}
+
+function ReportItemCard({ item, onDelete, onUpdateNotes }: ReportItemCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [notes, setNotes] = useState(item.notes);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleNotesChange = (value: string) => {
+    setNotes(value);
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => {
+      onUpdateNotes(item.id, value);
+    }, 500);
+  };
+
+  return (
+    <Card
+      sx={{
+        mb: 2,
+        border: "1px solid",
+        borderColor: "divider",
+      }}
+    >
+      <CardContent sx={{ "&:last-child": { pb: 1.5 } }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="body1" fontWeight={500}>
+              {item.title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {format(parseISO(item.createdAt), "MM/dd HH:mm")}
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? (
+              <ExpandLessRounded fontSize="small" />
+            ) : (
+              <ExpandMoreRounded fontSize="small" />
+            )}
+          </IconButton>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => onDelete(item.id)}
+          >
+            <DeleteOutlineRounded fontSize="small" />
+          </IconButton>
+        </Stack>
+        <Collapse in={expanded} timeout="auto" unmountOnExit>
+          <TextField
+            fullWidth
+            multiline
+            minRows={2}
+            maxRows={6}
+            size="small"
+            placeholder="메모를 입력하세요..."
+            value={notes}
+            onChange={(e) => handleNotesChange(e.target.value)}
+            sx={{ mt: 1.5 }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </Collapse>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---- Main OverviewBoard ----
+
 export default function OverviewBoard() {
-  const { tasks, deleteTask, toggleStar, dismissCalendarModified } =
+  const { tasks, deleteTask, toggleStar, dismissCalendarModified, updateTask } =
     useTaskContext();
   const [mounted, setMounted] = useState(false);
 
+  // Report items state
+  const [reportItems, setReportItems] = useState<ReportItem[]>([]);
+  const [newReportTitle, setNewReportTitle] = useState("");
+  const [showAddReport, setShowAddReport] = useState(false);
+
   useEffect(() => {
     setMounted(true);
+    setReportItems(loadReportItems());
   }, []);
+
+  // Persist report items
+  useEffect(() => {
+    if (mounted) saveReportItems(reportItems);
+  }, [reportItems, mounted]);
 
   // Exclude stock/finance/personal content from Overview
   const isStockContent = (task: TimTask) => {
@@ -175,21 +354,18 @@ export default function OverviewBoard() {
       "리밸런싱", "포트폴리오", "매매", "맥점", "복기", "수익률",
       "tsmc", "엔비디아", "msci", "설 연휴", "설연휴", "휴장",
     ];
-    return stockKeywords.some(kw => text.includes(kw));
+    return stockKeywords.some((kw) => text.includes(kw));
   };
 
   // Sort helper: starred first, today next, then by date
   const sortTasks = (taskList: TimTask[]) => {
     return [...taskList].sort((a, b) => {
-      // Starred first
       if (a.isStarred && !b.isStarred) return -1;
       if (!a.isStarred && b.isStarred) return 1;
-      // Today's tasks next
       const aIsToday = a.startDate ? isToday(parseISO(a.startDate)) : false;
       const bIsToday = b.startDate ? isToday(parseISO(b.startDate)) : false;
       if (aIsToday && !bIsToday) return -1;
       if (!aIsToday && bIsToday) return 1;
-      // Then by date ascending
       if (!a.startDate && !b.startDate) return 0;
       if (!a.startDate) return 1;
       if (!b.startDate) return -1;
@@ -202,7 +378,6 @@ export default function OverviewBoard() {
     const musicTasks = tasks.filter(
       (task) => task.category === "WEEKLY" || task.category === "URGENT"
     );
-
     const filtered = musicTasks
       .filter((task) => !isStockContent(task))
       .filter((task) => !task.stockDetails)
@@ -223,15 +398,11 @@ export default function OverviewBoard() {
     const musicTasks = tasks.filter(
       (task) => task.category === "WEEKLY" || task.category === "URGENT"
     );
-
     const filtered = musicTasks
       .filter((task) => !isStockContent(task))
       .filter((task) => !task.stockDetails)
       .filter((task) => {
-        if (!task.startDate) {
-          return false;
-        }
-
+        if (!task.startDate) return false;
         const date = parseISO(task.startDate);
         const inWindow = isWithinInterval(date, {
           start: startOfDay(today),
@@ -258,6 +429,13 @@ export default function OverviewBoard() {
     toggleStar(id);
   };
 
+  const handleMoveToPersonal = (
+    id: string,
+    subCategory: "GENERAL" | "YOUTUBE" | "AUTOMATION"
+  ) => {
+    updateTask(id, { category: "PERSONAL", subCategory });
+  };
+
   const handleUrgentDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     const oldIndex = urgentList.findIndex((item) => item.id === active.id);
@@ -272,16 +450,42 @@ export default function OverviewBoard() {
     setWeeklyList((items) => arrayMove(items, oldIndex, newIndex));
   };
 
+  // Report item handlers
+  const handleAddReportItem = () => {
+    const title = newReportTitle.trim();
+    if (!title) return;
+    const newItem: ReportItem = {
+      id: `report-${Date.now()}`,
+      title,
+      notes: "",
+      createdAt: new Date().toISOString(),
+    };
+    setReportItems((prev) => [newItem, ...prev]);
+    setNewReportTitle("");
+    setShowAddReport(false);
+  };
+
+  const handleDeleteReportItem = (id: string) => {
+    setReportItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleUpdateReportNotes = (id: string, notes: string) => {
+    setReportItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, notes } : item))
+    );
+  };
+
   // Get today's date formatted in Korean
   const todayDate = new Date();
-  const dayName = KOREAN_DAYS[format(todayDate, 'EEEE')] || format(todayDate, 'EEEE');
+  const dayName =
+    KOREAN_DAYS[format(todayDate, "EEEE")] || format(todayDate, "EEEE");
 
   return (
     <Box>
       {/* Today's Date Display */}
-      <Box sx={{ mb: 3, textAlign: 'center' }}>
+      <Box sx={{ mb: 3, textAlign: "center" }}>
         <Typography variant="h4" fontWeight={700} color="text.primary">
-          {format(todayDate, 'yyyy년 M월 d일')}
+          {format(todayDate, "yyyy년 M월 d일")}
         </Typography>
         <Typography variant="subtitle1" color="text.secondary">
           {dayName}
@@ -293,7 +497,7 @@ export default function OverviewBoard() {
         subtitle="오늘/내일 긴급 업무와 7일 내 TASK를 한 번에 관리합니다"
       />
       <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
-        {/* Urgent Tasks - 50% */}
+        {/* Urgent Tasks */}
         <Box sx={{ flex: 1 }}>
           <Paper
             sx={{
@@ -302,7 +506,14 @@ export default function OverviewBoard() {
               borderTopColor: "error.main",
             }}
           >
-            <Box sx={{ bgcolor: "error.main", color: "error.contrastText", px: 3, py: 2 }}>
+            <Box
+              sx={{
+                bgcolor: "error.main",
+                color: "error.contrastText",
+                px: 3,
+                py: 2,
+              }}
+            >
               <Typography variant="h6" fontWeight={600}>
                 Urgent
               </Typography>
@@ -328,17 +539,26 @@ export default function OverviewBoard() {
                           onToggleStar={handleToggleStar}
                           onDelete={deleteTask}
                           onDismissCalendarModified={dismissCalendarModified}
+                          onMoveToPersonal={handleMoveToPersonal}
                         />
                       ))
                     ) : (
-                      <Typography variant="body2" color="text.secondary" align="center">
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        align="center"
+                      >
                         No urgent tasks
                       </Typography>
                     )}
                   </SortableContext>
                 </DndContext>
               ) : (
-                <Typography variant="body2" color="text.secondary" align="center">
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  align="center"
+                >
                   Loading...
                 </Typography>
               )}
@@ -346,7 +566,7 @@ export default function OverviewBoard() {
           </Paper>
         </Box>
 
-        {/* Weekly Tasks - 50% */}
+        {/* Weekly Tasks */}
         <Box sx={{ flex: 1 }}>
           <Paper
             sx={{
@@ -355,7 +575,14 @@ export default function OverviewBoard() {
               borderTopColor: "primary.main",
             }}
           >
-            <Box sx={{ bgcolor: "primary.main", color: "primary.contrastText", px: 3, py: 2 }}>
+            <Box
+              sx={{
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+                px: 3,
+                py: 2,
+              }}
+            >
               <Typography variant="h6" fontWeight={600}>
                 Weekly Tasks
               </Typography>
@@ -379,17 +606,127 @@ export default function OverviewBoard() {
                           onToggleStar={handleToggleStar}
                           onDelete={deleteTask}
                           onDismissCalendarModified={dismissCalendarModified}
+                          onMoveToPersonal={handleMoveToPersonal}
                         />
                       ))
                     ) : (
-                      <Typography variant="body2" color="text.secondary" align="center">
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        align="center"
+                      >
                         No weekly tasks
                       </Typography>
                     )}
                   </SortableContext>
                 </DndContext>
               ) : (
-                <Typography variant="body2" color="text.secondary" align="center">
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  align="center"
+                >
+                  Loading...
+                </Typography>
+              )}
+            </Box>
+          </Paper>
+        </Box>
+
+        {/* Things to Report */}
+        <Box sx={{ flex: 1 }}>
+          <Paper
+            sx={{
+              overflow: "hidden",
+              borderTop: "4px solid",
+              borderTopColor: "#7b1fa2",
+            }}
+          >
+            <Box
+              sx={{
+                bgcolor: "#7b1fa2",
+                color: "white",
+                px: 3,
+                py: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Box>
+                <Typography variant="h6" fontWeight={600}>
+                  Things to report
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.85 }}>
+                  보고 / 공유할 내용 메모
+                </Typography>
+              </Box>
+              <Tooltip title="항목 추가">
+                <IconButton
+                  size="small"
+                  onClick={() => setShowAddReport((v) => !v)}
+                  sx={{ color: "white" }}
+                >
+                  <AddRounded fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Box sx={{ p: 3 }}>
+              {/* Add new report item form */}
+              <Collapse in={showAddReport} timeout="auto" unmountOnExit>
+                <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="보고 항목 제목..."
+                    value={newReportTitle}
+                    onChange={(e) => setNewReportTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddReportItem();
+                      if (e.key === "Escape") {
+                        setShowAddReport(false);
+                        setNewReportTitle("");
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={handleAddReportItem}
+                    disabled={!newReportTitle.trim()}
+                  >
+                    <AddRounded fontSize="small" />
+                  </IconButton>
+                </Stack>
+                <Divider sx={{ mb: 2 }} />
+              </Collapse>
+
+              {mounted ? (
+                reportItems.length > 0 ? (
+                  reportItems.map((item) => (
+                    <ReportItemCard
+                      key={item.id}
+                      item={item}
+                      onDelete={handleDeleteReportItem}
+                      onUpdateNotes={handleUpdateReportNotes}
+                    />
+                  ))
+                ) : (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    align="center"
+                  >
+                    보고할 항목이 없습니다
+                  </Typography>
+                )
+              ) : (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  align="center"
+                >
                   Loading...
                 </Typography>
               )}

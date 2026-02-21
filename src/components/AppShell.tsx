@@ -16,6 +16,8 @@ import LightbulbRounded from "@mui/icons-material/LightbulbRounded";
 import LibraryMusicRounded from "@mui/icons-material/LibraryMusicRounded";
 import SelfImprovementRounded from "@mui/icons-material/SelfImprovementRounded";
 import ShowChartRounded from "@mui/icons-material/ShowChartRounded";
+import MusicNoteRounded from "@mui/icons-material/MusicNoteRounded";
+import AlbumRounded from "@mui/icons-material/AlbumRounded";
 import SyncButton from "@/components/SyncButton";
 
 const drawerWidth = 280;
@@ -24,9 +26,11 @@ const navigationItems = [
   { href: "/", label: "Overview", icon: <DashboardRounded /> },
   { href: "/collab", label: "협업", icon: <HandshakeRounded /> },
   { href: "/hold-fix", label: "Hold / Fix", icon: <LibraryMusicRounded /> },
+  { href: "/release-schedule", label: "릴리즈 스케줄", icon: <AlbumRounded /> },
   { href: "/pitching", label: "피칭아이디어", icon: <LightbulbRounded /> },
   { href: "/personal", label: "개인 스케줄", icon: <SelfImprovementRounded /> },
   { href: "/stock", label: "주식 일정", icon: <ShowChartRounded /> },
+  { href: "/song-camp", label: "송캠프", icon: <MusicNoteRounded /> },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {

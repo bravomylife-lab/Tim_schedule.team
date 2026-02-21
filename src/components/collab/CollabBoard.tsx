@@ -257,7 +257,7 @@ function DetailDialog({ open, task, onClose, onSave, onDelete, onMoveToPitching 
                 <MenuItem value="COMPLETED">협업 완료</MenuItem>
               </Select>
             </FormControl>
-            {isCompleted && (
+            {(isCompleted || status === "IN_PROGRESS") && (
               <FormControlLabel
                 control={
                   <Checkbox
@@ -265,7 +265,7 @@ function DetailDialog({ open, task, onClose, onSave, onDelete, onMoveToPitching 
                     onChange={(e) => setMixMonitorSent(e.target.checked)}
                   />
                 }
-                label="Mix Monitor Sent"
+                label="믹스본전달 완료"
               />
             )}
             <TextField
@@ -425,13 +425,22 @@ function CompactCollabCard({
             )}
           </Stack>
           <Stack direction="row" alignItems="center" spacing={0.5}>
-            {details?.status === "COMPLETED" && (
-              <Checkbox
-                checked={details?.mixMonitorSent || false}
-                onChange={handleMixMonitorToggle}
-                size="small"
-                title="Mix Monitor Sent"
-              />
+            {(details?.status === "COMPLETED" || details?.status === "IN_PROGRESS") && (
+              <Box
+                onClick={(e) => e.stopPropagation()}
+                sx={{ display: "flex", alignItems: "center" }}
+              >
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.68rem" }}>
+                  믹스본
+                </Typography>
+                <Checkbox
+                  checked={details?.mixMonitorSent || false}
+                  onChange={handleMixMonitorToggle}
+                  size="small"
+                  title="믹스본전달 여부"
+                  sx={{ p: 0.25 }}
+                />
+              </Box>
             )}
             {task.calendarModified && (
               <Box
@@ -457,10 +466,15 @@ function CompactCollabCard({
           탑라이너: {details?.topLiner || "TBD"} | 타겟: {details?.targetArtist || "TBD"}
         </Typography>
 
-        {/* Line 3: Caption: 의뢰일 | 데드라인 */}
+        {/* Line 3: Caption: 의뢰일 | 데드라인 | 믹스본전달 */}
         <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
           의뢰: {formatDate(details?.requestedDate || task.startDate)}
           {details?.deadline && ` | 데드라인: ${formatDate(details.deadline)}`}
+          {(details?.status === "COMPLETED" || details?.status === "IN_PROGRESS") && (
+            <Box component="span" sx={{ color: details?.mixMonitorSent ? "success.main" : "text.disabled" }}>
+              {` | 믹스본전달: ${details?.mixMonitorSent ? "✓" : "✗"}`}
+            </Box>
+          )}
         </Typography>
       </Stack>
     </Paper>
@@ -563,13 +577,22 @@ function CompactCollabCardStatic({
             )}
           </Stack>
           <Stack direction="row" alignItems="center" spacing={0.5}>
-            {details?.status === "COMPLETED" && (
-              <Checkbox
-                checked={details?.mixMonitorSent || false}
-                onChange={handleMixMonitorToggle}
-                size="small"
-                title="Mix Monitor Sent"
-              />
+            {(details?.status === "COMPLETED" || details?.status === "IN_PROGRESS") && (
+              <Box
+                onClick={(e) => e.stopPropagation()}
+                sx={{ display: "flex", alignItems: "center" }}
+              >
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.68rem" }}>
+                  믹스본
+                </Typography>
+                <Checkbox
+                  checked={details?.mixMonitorSent || false}
+                  onChange={handleMixMonitorToggle}
+                  size="small"
+                  title="믹스본전달 여부"
+                  sx={{ p: 0.25 }}
+                />
+              </Box>
             )}
             {task.calendarModified && (
               <Box
@@ -595,6 +618,11 @@ function CompactCollabCardStatic({
         <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
           의뢰: {formatDate(details?.requestedDate || task.startDate)}
           {details?.deadline && ` | 데드라인: ${formatDate(details.deadline)}`}
+          {(details?.status === "COMPLETED" || details?.status === "IN_PROGRESS") && (
+            <Box component="span" sx={{ color: details?.mixMonitorSent ? "success.main" : "text.disabled" }}>
+              {` | 믹스본전달: ${details?.mixMonitorSent ? "✓" : "✗"}`}
+            </Box>
+          )}
         </Typography>
       </Stack>
     </Paper>

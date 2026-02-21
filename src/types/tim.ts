@@ -90,3 +90,19 @@ export interface GoogleEventSnapshot {
   description: string;
   startDate: string;
 }
+
+export interface ReleaseItem {
+  id: string;
+  album: string;
+  artist: string;
+  song: string;
+  lyricBy: string;
+  composedBy: string;
+  arrangedBy: string;
+  releaseDate: string;   // ISO date string
+  label: string;
+  trackNumber: string;   // "4" or "Digital Single" or "Mini Album"
+  youtubeUrl: string;
+  notes?: string;
+  createdAt: string;
+}

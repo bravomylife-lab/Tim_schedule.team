@@ -36,7 +36,7 @@ export default function PersonalBoard() {
 
   const sections = {
     GENERAL: { title: "개인 일정", tasks: [] as typeof personalTasks },
-    YOUTUBE: { title: "YOUTUBE (브라보팝)", tasks: [] as typeof personalTasks },
+    YOUTUBE: { title: "YOUTUBE", tasks: [] as typeof personalTasks },
     AUTOMATION: { title: "AI 자동화 (APP/테스트)", tasks: [] as typeof personalTasks },
   };
 

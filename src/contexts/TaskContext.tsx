@@ -154,20 +154,41 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         const task = prev.find((t) => t.id === taskId);
         if (!task) return prev;
 
+        const demoName = task.collabDetails?.trackName
+          || task.collabDetails?.songName
+          || task.title;
+
+        const writers = [
+          task.collabDetails?.trackProducer,
+          task.collabDetails?.topLiner,
+        ]
+          .filter(Boolean)
+          .filter((w) => w !== "TBD") as string[];
+
         const idea: PitchingIdea = {
           id: `pitch-${Date.now()}`,
-          demoName: task.collabDetails?.trackName || task.title,
-          writers: [task.collabDetails?.trackProducer, task.collabDetails?.topLiner].filter(
-            Boolean
-          ) as string[],
-          publishingInfo: "",
+          demoName,
+          writers,
+          publishingInfo: task.collabDetails?.publishingInfo || "",
           grade,
           sourceCollabId: taskId,
           createdAt: new Date().toISOString(),
+          notes: task.collabDetails?.notes || undefined,
         };
 
-        setPitchingIdeas((cur) => [...cur, idea]);
-        return prev;
+        setPitchingIdeas((cur) => {
+          // Deduplicate: if already exists for this collab, just update grade
+          const existingIdx = cur.findIndex((p) => p.sourceCollabId === taskId);
+          if (existingIdx >= 0) {
+            const updated = [...cur];
+            updated[existingIdx] = { ...updated[existingIdx], grade };
+            return updated;
+          }
+          return [...cur, idea];
+        });
+
+        // Remove from collab list after moving to pitching
+        return prev.filter((t) => t.id !== taskId);
       });
     },
     []

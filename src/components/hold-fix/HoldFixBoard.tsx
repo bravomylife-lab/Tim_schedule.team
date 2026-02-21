@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
@@ -19,6 +19,7 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
+import AddRounded from "@mui/icons-material/AddRounded";
 import SectionHeader from "@/components/SectionHeader";
 import { useTaskContext } from "@/contexts/TaskContext";
 import { TimTask, HoldFixType, HoldFixDetails, Currency } from "@/types/tim";
@@ -125,9 +126,20 @@ interface DetailDialogProps {
 }
 
 function DetailDialog({ open, task, onClose, onSave, onDelete }: DetailDialogProps) {
-  if (!task || !task.holdFixDetails) return null;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [localDetails, setLocalDetails] = useState<HoldFixDetails | null>(
+    task?.holdFixDetails ?? null
+  );
 
-  const [localDetails, setLocalDetails] = useState<HoldFixDetails>(task.holdFixDetails);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  React.useEffect(() => {
+    if (task?.holdFixDetails) {
+      setLocalDetails(task.holdFixDetails);
+    }
+  }, [task]);
+
+  if (!task || !task.holdFixDetails || !localDetails) return null;
+
   const type = localDetails.type;
 
   const handleWritersChange = (value: string) => {
@@ -289,14 +301,19 @@ function DetailDialog({ open, task, onClose, onSave, onDelete }: DetailDialogPro
                 </FormControl>
               </Stack>
 
-              <TextField
-                label="Mechanical 비용"
-                size="small"
-                type="number"
-                fullWidth
-                value={localDetails.mechanicalFee || ""}
-                onChange={(e) => setLocalDetails({ ...localDetails, mechanicalFee: parseFloat(e.target.value) || 0 })}
-              />
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TextField
+                  label="Mechanical 비용"
+                  size="small"
+                  type="number"
+                  value={localDetails.mechanicalFee || ""}
+                  onChange={(e) => setLocalDetails({ ...localDetails, mechanicalFee: parseFloat(e.target.value) || 0 })}
+                  sx={{ flex: 1 }}
+                />
+                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>
+                  {localDetails.currency === "USD" ? "USD" : localDetails.currency === "EUR" ? "EUR" : "KRW"}
+                </Typography>
+              </Stack>
             </>
           )}
 
@@ -335,14 +352,19 @@ function DetailDialog({ open, task, onClose, onSave, onDelete }: DetailDialogPro
                 </FormControl>
               </Stack>
 
-              <TextField
-                label="Mechanical 비용"
-                size="small"
-                type="number"
-                fullWidth
-                value={localDetails.mechanicalFee || ""}
-                onChange={(e) => setLocalDetails({ ...localDetails, mechanicalFee: parseFloat(e.target.value) || 0 })}
-              />
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TextField
+                  label="Mechanical 비용"
+                  size="small"
+                  type="number"
+                  value={localDetails.mechanicalFee || ""}
+                  onChange={(e) => setLocalDetails({ ...localDetails, mechanicalFee: parseFloat(e.target.value) || 0 })}
+                  sx={{ flex: 1 }}
+                />
+                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>
+                  {localDetails.currency === "USD" ? "USD" : localDetails.currency === "EUR" ? "EUR" : "KRW"}
+                </Typography>
+              </Stack>
             </>
           )}
         </Stack>
@@ -396,6 +418,13 @@ function CompactCard({ task, onCardClick, onDelete, isDragging, dragAttributes, 
     const currency = details.currency || "KRW";
     const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₩";
     return `${symbol}${details.productionFee.toLocaleString()}`;
+  };
+
+  const formatMechanicalFee = () => {
+    if (!details.mechanicalFee) return null;
+    const currency = details.currency || "KRW";
+    const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₩";
+    return `${symbol}${details.mechanicalFee.toLocaleString()}`;
   };
 
   const formatDate = (dateStr?: string) => {
@@ -460,6 +489,7 @@ function CompactCard({ task, onCardClick, onDelete, isDragging, dragAttributes, 
         >
           작곡가: {formatWritersCompact()}
           {formatFee() && ` • 곡비: ${formatFee()}`}
+          {formatMechanicalFee() && ` • Mech: ${formatMechanicalFee()}`}
         </Typography>
 
         {(details.publishingInfo || displayDate) && (
@@ -510,9 +540,10 @@ interface ColumnProps {
   tasks: TimTask[];
   onCardClick: (taskId: string) => void;
   onDelete: (taskId: string) => void;
+  onCreateNew: (type: HoldFixType) => void;
 }
 
-function Column({ type, tasks, onCardClick, onDelete }: ColumnProps) {
+function Column({ type, tasks, onCardClick, onDelete, onCreateNew }: ColumnProps) {
   const { setNodeRef } = useDroppable({
     id: type,
   });
@@ -527,6 +558,18 @@ function Column({ type, tasks, onCardClick, onDelete }: ColumnProps) {
           {title}
         </Typography>
         <Chip label={count} size="small" color={type === "FIX" ? "warning" : type === "RELEASE" ? "primary" : "default"} />
+        <Box sx={{ flex: 1 }} />
+        <IconButton
+          size="small"
+          onClick={() => onCreateNew(type)}
+          sx={{
+            backgroundColor: "primary.main",
+            color: "#fff",
+            "&:hover": { backgroundColor: "primary.dark" },
+          }}
+        >
+          <AddRounded fontSize="small" />
+        </IconButton>
       </Stack>
       <Box
         ref={setNodeRef}
@@ -582,10 +625,11 @@ function Column({ type, tasks, onCardClick, onDelete }: ColumnProps) {
 }
 
 export default function HoldFixBoard() {
-  const { tasks, updateTask, deleteTask, moveHoldFixType } = useTaskContext();
+  const { tasks, updateTask, deleteTask, moveHoldFixType, addTask } = useTaskContext();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TimTask | null>(null);
+  const [createMode, setCreateMode] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -623,12 +667,43 @@ export default function HoldFixBoard() {
     const task = tasks.find((t) => t.id === taskId);
     if (task) {
       setSelectedTask(task);
+      setCreateMode(false);
       setDialogOpen(true);
     }
   };
 
+  const handleCreateNew = (type: HoldFixType) => {
+    setCreateMode(true);
+    setSelectedTask({
+      id: `holdfix-${Date.now()}`,
+      title: "새 홀드/픽스",
+      startDate: new Date().toISOString(),
+      category: "HOLD_FIX" as const,
+      userEdited: true,
+      holdFixDetails: {
+        type,
+        demoName: "",
+        writers: [],
+        splits: {},
+        publishingInfo: "",
+        email: "",
+      },
+    });
+    setDialogOpen(true);
+  };
+
   const handleUpdate = (updates: Partial<HoldFixDetails>) => {
-    if (selectedTask && selectedTask.holdFixDetails) {
+    if (createMode && selectedTask) {
+      const newTask: TimTask = {
+        ...selectedTask,
+        id: `holdfix-${Date.now()}`,
+        holdFixDetails: {
+          ...(selectedTask.holdFixDetails as HoldFixDetails),
+          ...updates,
+        },
+      };
+      addTask(newTask);
+    } else if (selectedTask && selectedTask.holdFixDetails) {
       updateTask(selectedTask.id, {
         holdFixDetails: {
           ...selectedTask.holdFixDetails,
@@ -664,13 +739,13 @@ export default function HoldFixBoard() {
       >
         <Stack direction="row" spacing={2} sx={{ height: "calc(100vh - 180px)" }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Column type="HOLD" tasks={holdItems} onCardClick={handleCardClick} onDelete={handleDelete} />
+            <Column type="HOLD" tasks={holdItems} onCardClick={handleCardClick} onDelete={handleDelete} onCreateNew={handleCreateNew} />
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Column type="FIX" tasks={fixItems} onCardClick={handleCardClick} onDelete={handleDelete} />
+            <Column type="FIX" tasks={fixItems} onCardClick={handleCardClick} onDelete={handleDelete} onCreateNew={handleCreateNew} />
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Column type="RELEASE" tasks={releaseItems} onCardClick={handleCardClick} onDelete={handleDelete} />
+            <Column type="RELEASE" tasks={releaseItems} onCardClick={handleCardClick} onDelete={handleDelete} onCreateNew={handleCreateNew} />
           </Box>
         </Stack>
         <DragOverlay>
