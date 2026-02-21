@@ -12,6 +12,9 @@ export type QueryIntent =
   | { type: 'COLLAB_LIST'; status?: 'IN_PROGRESS' | 'REQUESTED' | 'ALL' }
   | { type: 'HOLD_LIST'; holdType?: 'HOLD' | 'FIX' | 'RELEASE' }
   | { type: 'PITCHING_LIST'; grade?: string }
+  | { type: 'DEMO_BY_TITLE'; title: string }
+  | { type: 'DEMO_BY_PUBLISHING'; publishingCompany: string }
+  | { type: 'DEMO_BY_RATING'; ratingScore: number }
   | { type: 'SEARCH'; keyword: string }
   | { type: 'HELP' }
   | { type: 'UNKNOWN' };
@@ -144,6 +147,50 @@ export function parseQuery(text: string): QueryIntent {
       return { type: 'PITCHING_LIST', grade: 'A' };
     }
     return { type: 'PITCHING_LIST' };
+  }
+
+  // ── 데모 음원 관리 ──────────────────────────────────────────────────────────
+  if (t.includes('데모') || t.includes('음원') || t.includes('demo')) {
+    // 평점/평가 점수 필터: "평점이 [점수]", "평가 점수 [점수]", "rating [점수]"
+    const ratingMatch = text.match(/(?:평점이?\s*|평가\s*점수\s*|rating\s*)([\d.]+)/i);
+    if (ratingMatch) {
+      const ratingScore = parseFloat(ratingMatch[1]);
+      if (!isNaN(ratingScore)) {
+        return { type: 'DEMO_BY_RATING', ratingScore };
+      }
+    }
+
+    // 퍼블리싱 업체 필터: "퍼블리싱 업체 [업체명]", "퍼블리싱 [업체명]"
+    const publishingMatch = text.match(/퍼블리싱\s*(?:업체\s+)?([^\s\n]+)/i);
+    if (publishingMatch) {
+      const company = publishingMatch[1].trim();
+      if (company) {
+        return { type: 'DEMO_BY_PUBLISHING', publishingCompany: company };
+      }
+    }
+
+    // 곡 제목 필터: "[곡명]이라는 곡 제목 찾아서", "데모명 [곡명]", "곡명 [곡명]"
+    const titleByNameMatch = text.match(/(?:데모명|곡명)\s+(.+?)(?:\s|$)/i);
+    if (titleByNameMatch) {
+      const title = titleByNameMatch[1].trim();
+      if (title) {
+        return { type: 'DEMO_BY_TITLE', title };
+      }
+    }
+    const titleByPhraseMatch = text.match(/(.+?)(?:이라는|라는)\s*곡\s*제목/);
+    if (titleByPhraseMatch) {
+      const title = titleByPhraseMatch[1].trim();
+      if (title) {
+        return { type: 'DEMO_BY_TITLE', title };
+      }
+    }
+
+    // 데모 키워드가 있는데 다른 패턴에 안 걸리면 → DEMO_BY_TITLE로 텍스트 전달
+    // (더 구체적인 의도 파악 불가 시 전체 텍스트를 제목 검색으로)
+    const trimmedForDemo = text.trim();
+    if (trimmedForDemo.length > 0) {
+      return { type: 'DEMO_BY_TITLE', title: trimmedForDemo };
+    }
   }
 
   // ── 검색 ────────────────────────────────────────────────────────────────────

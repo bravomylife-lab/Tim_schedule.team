@@ -337,6 +337,94 @@ export function formatPitchingList(rows: string[][], grade?: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DEMO 음원 관리 목록
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * DEMO_음원_관리 시트 컬럼 인덱스
+ * [데모 받은 날짜, 노래 제목, 저작자 정보, 퍼블리싱 정보, 곡 장르, 곡에 대한 느낌, 평가 점수, 데모 전달 받은 메일 주소]
+ *  0               1         2            3               4        5               6          7
+ */
+const COL_DEMO = {
+  receivedDate: 0, songTitle: 1, authorInfo: 2, publishingInfo: 3,
+  genre: 4, feeling: 5, ratingScore: 6, email: 7,
+} as const;
+
+export function formatDemoList(
+  rows: string[][],
+  mode: 'by_title' | 'by_publishing' | 'by_rating',
+  filterValue: string | number,
+): string {
+  const dataRows = rows.slice(1); // 헤더 제외
+
+  let filtered: string[][];
+  let headerLabel: string;
+
+  if (mode === 'by_title') {
+    const titleKeyword = String(filterValue).toLowerCase();
+    filtered = dataRows.filter((row) => {
+      const title = (row[COL_DEMO.songTitle] ?? '').toLowerCase();
+      return title.includes(titleKeyword);
+    });
+    headerLabel = `"${escapeMarkdown(String(filterValue))}" 제목 검색`;
+  } else if (mode === 'by_publishing') {
+    const company = String(filterValue).toLowerCase();
+    filtered = dataRows.filter((row) => {
+      const publishing = (row[COL_DEMO.publishingInfo] ?? '').toLowerCase();
+      return publishing.includes(company);
+    });
+    headerLabel = `퍼블리싱 "${escapeMarkdown(String(filterValue))}"`;
+  } else {
+    // by_rating
+    const targetScore = Number(filterValue);
+    filtered = dataRows.filter((row) => {
+      const scoreStr = (row[COL_DEMO.ratingScore] ?? '').trim();
+      const score = parseFloat(scoreStr);
+      return !isNaN(score) && score === targetScore;
+    });
+    headerLabel = `평점 ${escapeMarkdown(String(filterValue))}`;
+  }
+
+  const paged = filtered.slice(0, MAX_ITEMS_PER_PAGE);
+  const total = filtered.length;
+
+  const header = `🎵 *DEMO 음원 \\— ${headerLabel}* \\(${escapeMarkdown(String(total))}건\\)\n`;
+
+  if (paged.length === 0) {
+    return `${header}\n해당하는 데모 음원이 없습니다\\.`;
+  }
+
+  const lines: string[] = [header];
+  paged.forEach((row, i) => {
+    const songTitle    = orEmpty(row[COL_DEMO.songTitle], '(제목 없음)');
+    const receivedDate = fmtDate(row[COL_DEMO.receivedDate] ?? '');
+    const authorInfo   = orEmpty(row[COL_DEMO.authorInfo]);
+    const publishing   = orEmpty(row[COL_DEMO.publishingInfo]);
+    const genre        = orEmpty(row[COL_DEMO.genre]);
+    const feeling      = orEmpty(row[COL_DEMO.feeling]);
+    const rating       = orEmpty(row[COL_DEMO.ratingScore]);
+    const email        = orEmpty(row[COL_DEMO.email]);
+
+    lines.push(`${escapeMarkdown(String(i + 1))}\\. *${songTitle}*`);
+    lines.push(`   받은 날짜: ${receivedDate}`);
+    lines.push(`   저작자: ${authorInfo}`);
+    lines.push(`   퍼블리싱: ${publishing} \\| 장르: ${genre}`);
+    lines.push(`   느낌: ${feeling}`);
+    lines.push(`   평가 점수: ${rating}`);
+    lines.push(`   메일: ${email}`);
+    lines.push('');
+  });
+
+  if (total > MAX_ITEMS_PER_PAGE) {
+    lines.push(
+      `_\\.\\.\\. ${escapeMarkdown(String(total - MAX_ITEMS_PER_PAGE))}건 더 있습니다\\._`,
+    );
+  }
+
+  return truncate(lines.join('\n'));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 전체 검색
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -423,6 +511,13 @@ export function formatHelp(): string {
 • \`피칭\` — 전체 피칭 아이디어
 • \`피칭 S급\` — S 등급만 표시
 • \`피칭 A급\` — A 등급만 표시
+
+*DEMO 음원 관리*
+• \`데모명 \\[곡명\\]\` — 제목으로 데모 찾기
+• \`\\[곡명\\]이라는 곡 제목 찾아서\` — 제목으로 데모 찾기
+• \`퍼블리싱 \\[업체명\\]\` — 퍼블리싱 업체로 필터
+• \`퍼블리싱 업체 \\[업체명\\] 데모\` — 퍼블리싱 업체로 필터
+• \`평점이 \\[점수\\]\` — 평가 점수로 필터 \\(예: 평점이 5\\.0\\)
 
 *검색*
 • \`\\[곡명\\] 정보\` — 특정 곡 검색

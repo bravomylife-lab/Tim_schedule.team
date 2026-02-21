@@ -13,6 +13,7 @@ import {
   formatCollabList,
   formatHoldList,
   formatPitchingList,
+  formatDemoList,
   formatSearchResults,
   formatHelp,
   escapeMarkdown,
@@ -185,6 +186,45 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           return NextResponse.json({ ok: true });
         }
         response = formatPitchingList(rows, intent.grade);
+        break;
+      }
+
+      // DEMO 음원 — 제목 검색
+      case 'DEMO_BY_TITLE': {
+        let rows: string[][];
+        try {
+          rows = await readSheet('DEMO_음원_관리');
+        } catch (err) {
+          await sendErrorMessage(chatId, err);
+          return NextResponse.json({ ok: true });
+        }
+        response = formatDemoList(rows, 'by_title', intent.title);
+        break;
+      }
+
+      // DEMO 음원 — 퍼블리싱 업체 필터
+      case 'DEMO_BY_PUBLISHING': {
+        let rows: string[][];
+        try {
+          rows = await readSheet('DEMO_음원_관리');
+        } catch (err) {
+          await sendErrorMessage(chatId, err);
+          return NextResponse.json({ ok: true });
+        }
+        response = formatDemoList(rows, 'by_publishing', intent.publishingCompany);
+        break;
+      }
+
+      // DEMO 음원 — 평점 필터
+      case 'DEMO_BY_RATING': {
+        let rows: string[][];
+        try {
+          rows = await readSheet('DEMO_음원_관리');
+        } catch (err) {
+          await sendErrorMessage(chatId, err);
+          return NextResponse.json({ ok: true });
+        }
+        response = formatDemoList(rows, 'by_rating', intent.ratingScore);
         break;
       }
 
